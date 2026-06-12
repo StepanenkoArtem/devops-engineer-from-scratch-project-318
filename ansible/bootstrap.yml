@@ -1,15 +1,109 @@
-# 1) Login as root using ssh
-# 2) Create new user
-# 3) setup access for the new user (use vars for user name and local public key)
-# 4) Config permission for new user
-# 4) enable in ufw new SSH port (use vars)
-# 5) configure sshd to use new port (use vars)
-# 5) logout from root
+# Play 1
+- name: Create non-root user environment
+  hosts: droplets
+  vars:
+    ansible_user: root
 
-# 6) login as new user using old port
-# 7) disable login with password for new user
-# 8) disable login as root
-# 9) restart sshd 
+  tasks:
+    - name: Create non-root user
+      ansible.builtin.user:
+        name: "{{ non_root_user_name }}"
+        state: present
 
-# 10) login by new user via new port
-# 11) configure firewall to disable old ssh port
+    - name: Create authorized keys
+      ansible.posix.authorized_key:
+        user: "{{ non_root_user_name }}"
+        state: present
+        key: "{{ item }}"
+      with_file:
+        - public_keys/devops.pub
+
+    - name: Add non-root user to sudoers
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/{{ non_root_user_name }}
+        content: "{{ non_root_user_name }} ALL=(ALL:ALL) NOPASSWD: ALL\n"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0440"
+        validate: "visudo -cf %s"
+
+# Play 2
+- name: Update droplet configuration
+  hosts: droplets
+  become: true
+  vars:
+    ansible_user: "{{ non_root_user_name }}"
+
+  tasks:
+    - name: Change SSH port
+      ansible.builtin.template:
+        dest: /etc/ssh/sshd_config.d/40-port.conf
+        src: 40-port.conf.j2
+        owner: "root"
+        group: "root"
+        mode: "0440"
+        validate: "sshd -t -f %s"
+      notify:
+        - Restart sshd
+
+    - name: Turn socket off
+      ansible.builtin.service:
+        name: ssh.socket
+        state: stopped
+        enabled: false
+
+    - name: Turn service on
+      ansible.builtin.service:
+        name: ssh.service
+        enabled: true
+        state: started
+
+    - name: Set UFW default policy
+      community.general.ufw:
+        default: "deny"
+        direction: incoming
+
+    - name: Prepare new UFW configuration
+      community.general.ufw:
+        port: "{{ ssh_port }}"
+        rule: "allow"
+        state: "disabled"
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.systemd_service:
+        name: ssh.socket
+        state: restarted
+
+# Play 3
+
+- name: Apply new configuration
+  hosts: droplets
+  become: true
+  vars:
+    ansible_user: "{{ non_root_user_name }}"
+    ansible_port: "{{ ssh_port }}"
+
+  tasks:
+    - name: Disable auth by password and root
+      ansible.builtin.template:
+        dest: /etc/ssh/sshd_config.d/45-auth.conf
+        src: 45-auth.conf.j2
+        owner: "root"
+        group: "root"
+        mode: "0440"
+        validate: "sshd -t -f %s"
+      notify:
+        - Restart sshd
+
+    - name: Turn on UFW
+      community.general.ufw:
+        state: "enabled"
+      tags:
+        - new-config
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: ssh
+        state: reloaded
