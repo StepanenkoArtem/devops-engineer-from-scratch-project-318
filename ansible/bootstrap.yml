@@ -72,7 +72,7 @@
   handlers:
     - name: Restart sshd
       ansible.builtin.systemd_service:
-        name: ssh.socket
+        name: ssh.service
         state: restarted
 
 # Play 3
@@ -99,11 +99,9 @@
     - name: Turn on UFW
       community.general.ufw:
         state: "enabled"
-      tags:
-        - new-config
 
   handlers:
     - name: Restart sshd
-      ansible.builtin.service:
-        name: ssh
-        state: reloaded
+      ansible.builtin.systemd_service:
+        name: ssh.service
+        state: restarted
