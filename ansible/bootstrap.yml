@@ -1,3 +1,16 @@
+# ONE-SHOT bootstrap — run ONCE against a fresh droplet.
+#
+# Starting state it expects: root SSH login is still open on the default
+# port 22. The playbook then transitions the host to its hardened state:
+#   Play 1 — create the `devops` user + authorized key + passwordless sudo
+#   Play 2 — move SSH to a custom port (socket -> service) and stage UFW
+#   Play 3 — disable root/password auth and enable UFW
+#
+# After a successful run, root@22 no longer works, so re-running THIS
+# playbook fails at connection time (root on port 22 is gone) — that is
+# expected, not a bug. Repeatable configuration belongs in the main
+# playbook (playbook.yml), which connects as `devops` on the new port.
+
 # Play 1
 - name: Create non-root user environment
   hosts: droplets
