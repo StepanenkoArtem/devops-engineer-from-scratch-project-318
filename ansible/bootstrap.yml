@@ -22,8 +22,8 @@
       ansible.builtin.copy:
         dest: /etc/sudoers.d/{{ non_root_user_name }}
         content: "{{ non_root_user_name }} ALL=(ALL:ALL) NOPASSWD: ALL\n"
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "root"
+        group: "root"
         mode: "0440"
         validate: "visudo -cf %s"
 
@@ -63,11 +63,12 @@
         default: "deny"
         direction: incoming
 
-    - name: Prepare new UFW configuration
+    - name: Stage new UFW configuration to apply it on Play 3
       community.general.ufw:
         port: "{{ ssh_port }}"
         rule: "allow"
         state: "disabled"
+        proto: "tcp"
 
   handlers:
     - name: Restart sshd
