@@ -18,6 +18,9 @@
       with_file:
         - public_keys/devops.pub
 
+    # TODO: harden sudo — replace NOPASSWD with password-required sudo and
+    # supply the become password via Ansible Vault (defense in depth, so a
+    # leaked SSH key alone can't escalate to root). Deferred until Vault step.
     - name: Add non-root user to sudoers
       ansible.builtin.copy:
         dest: /etc/sudoers.d/{{ non_root_user_name }}
