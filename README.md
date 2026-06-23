@@ -16,7 +16,7 @@ repeatable configuration belongs in the main playbook (`playbook.yml`),
 which connects as `devops` on the configured port.
 
 ```sh
-ansible-playbook ansible/bootstrap.yml -i ansible/bootstrap.ini
+ansible-playbook ansible/bootstrap.yml -i ansible/inventory.ini
 ```
 
 Variables (host/group): see `ansible/group_vars/droplets.yml`

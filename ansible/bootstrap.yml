@@ -11,11 +11,12 @@
 # expected, not a bug. Repeatable configuration belongs in the main
 # playbook (playbook.yml), which connects as `devops` on the new port.
 
-# Play 1
+# play 1
 - name: Create non-root user environment
   hosts: droplets
   vars:
     ansible_user: root
+    ansible_port: 22
 
   tasks:
     - name: Create non-root user
@@ -49,6 +50,7 @@
   become: true
   vars:
     ansible_user: "{{ non_root_user_name }}"
+    ansible_port: 22
 
   tasks:
     - name: Change SSH port

@@ -1,0 +1,11 @@
+certbot_auto_renew: true
+certbot_create_method: webroot
+certbot_create_standalone_stop_services:
+  - nginx
+certbot_webroot: /var/www/letsencrypt
+certbot_create_if_missing: true
+certbot_admin_email: "artem.stepanenko.ks.ua@gmail.com"
+certbot_certs:
+  - domains:
+      - "{{ domain_name }}"
+certbot_auto_renew_options: "--webroot -w /var/www/letsencrypt --deploy-hook 'systemctl reload nginx'"

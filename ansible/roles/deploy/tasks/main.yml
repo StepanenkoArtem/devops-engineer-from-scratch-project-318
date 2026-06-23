@@ -1,0 +1,36 @@
+- name: Prepare volumes
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    mode: "0755"
+  loop:
+    - "{{ deploy_log_path }}"
+    - "{{ deploy_tmp_path }}"
+
+- name: Start app container
+  community.docker.docker_container:
+    name: "{{ deploy_docker_container }}"
+    image: "{{ deploy_docker_image }}"
+    state: started
+    pull: true
+    recreate: true
+    restart_policy: unless-stopped
+    ports:
+      - "127.0.0.1:{{ deploy_app_port }}:{{ deploy_app_port }}"
+    volumes:
+      - "{{ deploy_log_path }}:/app/log"
+      - "{{ deploy_tmp_path }}:/app/tmp"
+    env:
+      SPRING_PROFILES_ACTIVE: "prod"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ db_host }}:{{ db_port }}/{{ db_name }}?sslmode={{ db_sslmode }}"
+      SPRING_DATASOURCE_USERNAME: "{{ vault_db_username }}"
+      SPRING_DATASOURCE_PASSWORD: "{{ vault_db_password }}"
+
+      STORAGE_S3_BUCKET: "{{ deploy_s3_bucket }}"
+      STORAGE_S3_REGION: "{{ deploy_s3_region }}"
+      STORAGE_S3_ENDPOINT: "{{ deploy_s3_endpoint }}"
+      STORAGE_S3_ACCESSKEY: "{{ vault_s3_access_key }}"
+      STORAGE_S3_SECRETKEY: "{{ vault_s3_secret_key }}"
+
+      JAVA_OPTS: "-Xmx512m"

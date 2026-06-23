@@ -1,0 +1,61 @@
+- name: Application
+  hosts: droplets
+  become: true
+
+  pre_tasks:
+    - name: Create ssl_certificate directory
+      ansible.builtin.file:
+        path: /var/www/letsencrypt
+        state: directory
+        mode: "0755"
+
+    - name: Configure firewall
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop: "{{ ports }}"
+
+    - name: Enable firewall
+      community.general.ufw:
+        state: enabled
+        default: deny
+
+    - name: Check certificate
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+      register: cert_file
+
+    - name: Build nginx vhosts conditionally
+      ansible.builtin.set_fact:
+        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+
+    - name: Run nginx
+      ansible.builtin.include_role:
+        name: geerlingguy.nginx
+
+    - name: Run certbot
+      ansible.builtin.include_role:
+        name: geerlingguy.certbot
+
+    - name: Re-check certificate
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+      register: cert_file
+
+    - name: Build nginx vhosts conditionally
+      ansible.builtin.set_fact:
+        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+
+    - name: Run nginx
+      ansible.builtin.include_role:
+        name: geerlingguy.nginx
+
+  roles:
+    - geerlingguy.docker
+    - deploy
+
+  # tasks:
+
+  # post_tasks:
+
+  # handlers:
