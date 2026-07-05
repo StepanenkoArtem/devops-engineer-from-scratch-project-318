@@ -2,7 +2,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: "{{ ansible_user }}"
+    owner: "{{ deploy_app_uid }}"
     mode: "0755"
   loop:
     - "{{ deploy_log_path }}"

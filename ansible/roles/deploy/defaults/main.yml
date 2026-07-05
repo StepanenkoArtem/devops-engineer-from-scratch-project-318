@@ -6,6 +6,7 @@ deploy_docker_image: "{{ deploy_docker_registry_repo }}/{{ deploy_app_name }}:{{
 deploy_image_tag: "latest"
 
 deploy_app_port: 8080
+deploy_app_uid: 1001 # Should be the same as user id in application Dockerfile
 deploy_app_base_dir: "/opt/{{ deploy_app_name }}"
 deploy_tmp_path: "{{ deploy_app_base_dir }}/tmp"
 deploy_log_path: "{{ deploy_app_base_dir }}/log"
