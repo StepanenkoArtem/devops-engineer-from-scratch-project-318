@@ -33,3 +33,12 @@
       STORAGE_S3_SECRETKEY: "{{ vault_s3_secret_key }}"
 
       JAVA_OPTS: "-Xmx512m"
+
+  # TODO: rework Application Health-check to use actuator
+- name: Application Health-check
+  ansible.builtin.uri:
+    url: https://bulletins.artem.diy/
+  register: deploy_result
+  until: deploy_result.status | default(0) == 200
+  delay: 5
+  retries: 24
