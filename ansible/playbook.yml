@@ -33,6 +33,9 @@
       ansible.builtin.include_role:
         name: geerlingguy.nginx
 
+    - name: Run handlers before certbot issuance
+      ansible.builtin.meta: flush_handlers
+
     - name: Run certbot
       ansible.builtin.include_role:
         name: geerlingguy.certbot
@@ -49,6 +52,10 @@
     - name: Run nginx
       ansible.builtin.include_role:
         name: geerlingguy.nginx
+
+    - name: Run handlers after TSL certificate issuance
+      ansible.builtin.meta: flush_handlers
+
 
   roles:
     - geerlingguy.docker
