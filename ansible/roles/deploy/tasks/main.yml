@@ -14,7 +14,6 @@
     image: "{{ deploy_docker_image }}"
     state: started
     pull: true
-    recreate: true
     restart_policy: unless-stopped
     ports:
       - "127.0.0.1:{{ deploy_app_port }}:{{ deploy_app_port }}"
