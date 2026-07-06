@@ -39,7 +39,7 @@
   # TODO: rework Application Health-check to use actuator
 - name: Application Health-check
   ansible.builtin.uri:
-    url: https://bulletins.artem.diy/
+    url: "https://{{ domain_name }}/"
   register: deploy_result
   until: deploy_result.status | default(0) == 200
   delay: 5
