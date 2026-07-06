@@ -1,38 +1,45 @@
-Role Name
-=========
+# deploy
 
-A brief description of the role goes here.
+Ansible role that deploys the **bulletins** application as a Docker container on the target host: prepares the
+bind-mounted volumes, pulls the requested image, starts the container, and verifies it with a post-start HTTP
+health-check.
 
-Requirements
-------------
+## Requirements
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- Docker on the host (installed earlier in the play by the `geerlingguy.docker` role).
+- The image must already be built and pushed to Docker Hub by the app repo's CI.
 
-Role Variables
---------------
+## Role variables
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+**Required — no default, must be passed at run time:**
 
-Dependencies
-------------
+- `image_tag` — the immutable image tag to deploy, e.g. `sha-8be5c56`. There is deliberately no default (per ADR-0001:
+  never deploy `latest`); the playbook fails fast if it is undefined or empty.
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+**Defaults (`defaults/main.yml`, override if needed):**
 
-Example Playbook
-----------------
+- `deploy_app_uid` (`1001`) — uid the container process runs as; must match the `USER` uid in the app Dockerfile,
+  otherwise the container can't write to the bind mounts.
+- `deploy_app_name`, `deploy_docker_registry_repo`, `deploy_docker_container` — image and container naming;
+  `deploy_docker_image` is derived from them plus `image_tag`.
+- `deploy_app_base_dir` (`/opt/bulletins`), `deploy_log_path`, `deploy_tmp_path` — host paths bind-mounted into the
+  container.
+- `deploy_s3_bucket`, `deploy_s3_region`, `deploy_s3_endpoint` — object-storage config.
+- `deploy_no_log` (`true`) — redacts the container env (secrets) from Ansible output; set `-e deploy_no_log=false` to
+  debug.
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+**Consumed from group_vars / vault (must be defined by the play):**
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+- `application_port` — app port, proxied by nginx and published on `127.0.0.1`.
+- `db_host`, `db_port`, `db_name`, `db_sslmode` — database connection.
+- `vault_db_username`, `vault_db_password`, `vault_s3_access_key`, `vault_s3_secret_key` — secrets (Ansible Vault).
 
-License
--------
+## Example
 
-BSD
+Deploy the image built for a specific commit (see the repo `Makefile`):
 
-Author Information
-------------------
+    make deploy IMAGE_TAG=sha-8be5c56
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+or invoke the playbook directly:
+
+    ansible-playbook ansible/playbook.yml -i ansible/inventory.ini -e image_tag=sha-8be5c56
