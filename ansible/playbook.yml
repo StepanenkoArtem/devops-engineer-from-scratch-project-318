@@ -56,6 +56,18 @@
     - name: Run handlers after TSL certificate issuance
       ansible.builtin.meta: flush_handlers
 
+    - name: Set renew cert hook
+      ansible.builtin.copy:
+        src: certbot/deploy_auto_renew.sh
+        dest: /etc/letsencrypt/renewal-hooks/deploy/
+        owner: 'root'
+        mode: '0755'
+
+    - name: Turn off certbot.timer
+      ansible.builtin.systemd_service:
+        name: certbot.timer
+        enabled: false
+        state: stopped
 
   roles:
     - geerlingguy.docker
