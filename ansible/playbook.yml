@@ -2,7 +2,7 @@
   hosts: droplets
   become: true
 
-  pre_tasks:
+  tasks:
     - name: Create ssl_certificate directory
       ansible.builtin.file:
         path: /var/www/letsencrypt
@@ -29,7 +29,7 @@
       ansible.builtin.set_fact:
         nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
 
-    - name: Run nginx
+    - name: Run nginx with HTTP only
       ansible.builtin.include_role:
         name: geerlingguy.nginx
 
@@ -45,11 +45,11 @@
         path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
       register: cert_file
 
-    - name: Build nginx vhosts conditionally
+    - name: Re-build nginx vhosts conditionally to add TLS
       ansible.builtin.set_fact:
         nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
 
-    - name: Run nginx
+    - name: Re-Run nginx with TLS
       ansible.builtin.include_role:
         name: geerlingguy.nginx
 
@@ -69,12 +69,10 @@
         enabled: false
         state: stopped
 
-  roles:
-    - geerlingguy.docker
-    - deploy
+    - name: Run docker
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
 
-  # tasks:
-
-  # post_tasks:
-
-  # handlers:
+    - name: Deploy
+      ansible.builtin.include_role:
+        name: deploy
