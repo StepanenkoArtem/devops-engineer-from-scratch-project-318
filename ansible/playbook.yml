@@ -58,7 +58,7 @@
       ansible.builtin.include_role:
         name: geerlingguy.nginx
 
-    - name: Run handlers after TSL certificate issuance
+    - name: Run handlers after TLS certificate issuance
       ansible.builtin.meta: flush_handlers
 
     - name: Set renew cert hook
