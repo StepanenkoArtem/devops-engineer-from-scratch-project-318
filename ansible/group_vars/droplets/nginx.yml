@@ -1,0 +1,51 @@
+nginx_remove_default_vhost: true
+csp_policy: >-
+  default-src 'self';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' https://*.digitaloceanspaces.com data: blob:;
+  connect-src 'self' https://*.digitaloceanspaces.com
+
+nginx_vhost_http:
+  - listen: "80"
+    server_name: "{{ domain_name }}"
+    filename: "80-{{ domain_name }}.conf"
+    extra_parameters: |
+      location /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+      }
+      location / {
+        return 301 https://$host$request_uri;
+      }
+
+nginx_vhost_https:
+  - listen: "443 ssl"
+    ssl_protocols: "TLSv1.2 TLSv1.3"
+    ssl_ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305"
+    server_name: "{{ domain_name }}"
+    filename: "443-{{ domain_name }}.conf"
+
+    extra_parameters: |
+      ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
+
+      ssl_prefer_server_ciphers off;
+      add_header Strict-Transport-Security max-age=31536000 always;
+      add_header X-Frame-Options DENY always;
+      add_header X-Content-Type-Options nosniff always;
+      add_header Referrer-Policy strict-origin-when-cross-origin always;
+      add_header Content-Security-Policy "{{ csp_policy }}" always;
+
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+
+      location / {
+        proxy_pass http://localhost:{{ application_port }};
+      }
+
+      location ~* \.(css|js|png|jpg|jpeg|webp|svg|ico|woff2)$ {
+        proxy_pass http://localhost:{{ application_port }};
+        expires 1d;
+      }

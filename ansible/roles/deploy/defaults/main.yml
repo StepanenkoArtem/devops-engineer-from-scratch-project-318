@@ -1,0 +1,14 @@
+deploy_app_name: bulletins
+
+deploy_docker_registry_repo: artemstepanenko
+deploy_docker_container: bulletins
+deploy_docker_image: "{{ deploy_docker_registry_repo }}/{{ deploy_app_name }}:{{ image_tag }}"
+
+deploy_app_uid: 1001 # Should be the same as user id in application Dockerfile
+deploy_app_base_dir: "/opt/{{ deploy_app_name }}"
+deploy_tmp_path: "{{ deploy_app_base_dir }}/tmp"
+deploy_log_path: "{{ deploy_app_base_dir }}/log"
+
+deploy_s3_bucket: "hexlet4-s3"
+deploy_s3_region: "fra1"
+deploy_s3_endpoint: "https://fra1.digitaloceanspaces.com"

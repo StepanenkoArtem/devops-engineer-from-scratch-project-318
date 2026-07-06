@@ -1,0 +1,85 @@
+- name: Application
+  hosts: droplets
+  become: true
+
+  tasks:
+    - name: Ensure image_tag is a sha-<commit> tag
+      ansible.builtin.assert:
+        that:
+          - image_tag is defined
+          - image_tag | length > 0
+          - image_tag is match('^sha-[0-9a-f]{7,40}$')
+        fail_msg: "Docker image tag must be provided as sha-<commit> (7-40 hex chars)"
+    - name: Create ssl_certificate directory
+      ansible.builtin.file:
+        path: /var/www/letsencrypt
+        state: directory
+        mode: "0755"
+
+    - name: Configure firewall
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop: "{{ ports }}"
+
+    - name: Enable firewall
+      community.general.ufw:
+        state: enabled
+        default: deny
+
+    - name: Check certificate
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+      register: cert_file
+
+    - name: Build nginx vhosts conditionally
+      ansible.builtin.set_fact:
+        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+
+    - name: Run nginx with HTTP only
+      ansible.builtin.include_role:
+        name: geerlingguy.nginx
+
+    - name: Run handlers before certbot issuance
+      ansible.builtin.meta: flush_handlers
+
+    - name: Run certbot
+      ansible.builtin.include_role:
+        name: geerlingguy.certbot
+
+    - name: Re-check certificate
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+      register: cert_file
+
+    - name: Re-build nginx vhosts conditionally to add TLS
+      ansible.builtin.set_fact:
+        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+
+    - name: Re-Run nginx with TLS
+      ansible.builtin.include_role:
+        name: geerlingguy.nginx
+
+    - name: Run handlers after TLS certificate issuance
+      ansible.builtin.meta: flush_handlers
+
+    - name: Set renew cert hook
+      ansible.builtin.copy:
+        src: certbot/deploy_auto_renew.sh
+        dest: /etc/letsencrypt/renewal-hooks/deploy/
+        owner: "root"
+        mode: "0755"
+
+    - name: Turn off certbot.timer
+      ansible.builtin.systemd_service:
+        name: certbot.timer
+        enabled: false
+        state: stopped
+
+    - name: Run docker
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
+
+    - name: Deploy
+      ansible.builtin.include_role:
+        name: deploy
