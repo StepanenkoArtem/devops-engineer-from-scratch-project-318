@@ -18,13 +18,27 @@ ansible-playbook ansible/bootstrap.yml -i ansible/inventory.ini
 
 ## Application deploy
 
-After bootstrap, install the role/collection dependencies once, then run the main playbook. It connects as `devops` on
-the configured SSH port, sets up nginx + a Let's Encrypt TLS certificate, and deploys the app container:
+After bootstrap, install the dependencies once (`install -r` installs both the roles and the collections from the file):
 
 ```sh
 ansible-galaxy install -r ansible/requirements.yml
-ansible-playbook ansible/playbook.yml -i ansible/inventory.ini
 ```
+
+Then deploy a specific image. The playbook **requires** `image_tag` — an immutable `sha-<commit>` tag (per ADR-0001;
+there is no `latest` default, and the play fails fast if the tag is missing). Deploy via the Makefile:
+
+```sh
+make deploy IMAGE_TAG=sha-<commit>
+```
+
+or call the playbook directly:
+
+```sh
+ansible-playbook ansible/playbook.yml -i ansible/inventory.ini -e image_tag=sha-<commit>
+```
+
+It connects as `devops` on the configured SSH port, sets up nginx + a Let's Encrypt TLS certificate, and deploys the app
+container.
 
 The vault password file path is set in `ansible.cfg` (`vault_password_file`), so no `--vault-password-file` flag is
 needed — just make sure that file exists locally.
