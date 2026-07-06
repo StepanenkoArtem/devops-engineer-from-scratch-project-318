@@ -3,6 +3,11 @@
   become: true
 
   tasks:
+    - name: Ensure SHA-commit is defined
+      ansible.builtin.assert:
+        that: image_tag is defined and image_tag | length > 0
+        fail_msg: "Docker image tag is not provided"
+
     - name: Create ssl_certificate directory
       ansible.builtin.file:
         path: /var/www/letsencrypt
