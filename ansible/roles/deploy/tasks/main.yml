@@ -9,6 +9,7 @@
     - "{{ deploy_tmp_path }}"
 
 - name: Start app container
+  no_log: "{{ deploy_no_log | default(true) }}"
   community.docker.docker_container:
     name: "{{ deploy_docker_container }}"
     image: "{{ deploy_docker_image }}"
