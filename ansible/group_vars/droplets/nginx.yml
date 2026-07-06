@@ -21,7 +21,7 @@ nginx_vhost_http:
 nginx_vhost_https:
   - listen: "443 ssl"
     ssl_protocols: "TLSv1.2 TLSv1.3"
-    ssl_ciphers: "HIGH:!aNULL:!MD5"
+    ssl_ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305"
     server_name: "{{ domain_name }}"
     filename: "443-{{ domain_name }}.conf"
 
@@ -29,6 +29,7 @@ nginx_vhost_https:
       ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
       ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
 
+      ssl_prefer_server_ciphers off;
       add_header Strict-Transport-Security max-age=31536000 always;
       add_header X-Frame-Options DENY always;
       add_header X-Content-Type-Options nosniff always;
