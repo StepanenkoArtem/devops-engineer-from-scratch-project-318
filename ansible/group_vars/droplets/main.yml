@@ -9,6 +9,8 @@ db_port: "25060"
 db_name: "defaultdb"
 db_sslmode: "require"
 
+application_port: 8080
+
 domain_name: "bulletins.artem.diy"
 
 ports:

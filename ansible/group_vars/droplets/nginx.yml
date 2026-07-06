@@ -41,10 +41,10 @@ nginx_vhost_https:
       proxy_set_header X-Forwarded-Proto $scheme;
 
       location / {
-        proxy_pass http://localhost:{{ deploy_app_port }};
+        proxy_pass http://localhost:{{ application_port }};
       }
 
       location ~* \.(css|js|png|jpg|jpeg|webp|svg|ico|woff2)$ {
-        proxy_pass http://localhost:{{ deploy_app_port }};
+        proxy_pass http://localhost:{{ application_port }};
         expires 1d;
       }
