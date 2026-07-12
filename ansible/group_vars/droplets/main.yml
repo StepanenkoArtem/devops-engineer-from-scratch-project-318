@@ -17,3 +17,4 @@ ports:
   - "{{ ssh_port }}" # custom SSH port
   - "80"
   - "443"
+  - "{{ node_exporter_port }}"

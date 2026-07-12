@@ -10,4 +10,8 @@ deploy: ## Deploy application with given SHA
 	@test -n "$(IMAGE_TAG)" || { echo "usage: make deploy IMAGE_TAG=sha-<commit>"; exit 1; }
 	ansible-playbook ansible/playbook.yml -i ansible/inventory.ini -e "image_tag=$(IMAGE_TAG)"
 
-.PHONY: help droplet deploy
+requirements:
+	ansible-galaxy install -r  ansible/requirements.yml
+
+
+.PHONY: help droplet deploy requirements

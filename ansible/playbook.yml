@@ -2,7 +2,7 @@
   hosts: droplets
   become: true
 
-  tasks:
+  pre_tasks:
     - name: Ensure image_tag is a sha-<commit> tag
       ansible.builtin.assert:
         that:
@@ -10,6 +10,7 @@
           - image_tag | length > 0
           - image_tag is match('^sha-[0-9a-f]{7,40}$')
         fail_msg: "Docker image tag must be provided as sha-<commit> (7-40 hex chars)"
+
     - name: Create ssl_certificate directory
       ansible.builtin.file:
         path: /var/www/letsencrypt
@@ -32,6 +33,10 @@
         path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
       register: cert_file
 
+  roles:
+    - prometheus.prometheus.node_exporter
+
+  tasks:
     - name: Build nginx vhosts conditionally
       ansible.builtin.set_fact:
         nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
