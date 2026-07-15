@@ -35,6 +35,14 @@
         state: enabled
         default: deny
 
+    - name: Ensure /etc/nginx directory exists
+      ansible.builtin.file:
+        path: /etc/nginx
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
     - name: Add a user to a password file and ensure permissions are set
       community.general.htpasswd:
         path: /etc/nginx/.htpasswd
