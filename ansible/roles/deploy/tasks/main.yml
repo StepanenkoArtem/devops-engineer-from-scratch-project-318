@@ -47,3 +47,5 @@
   until: deploy_result.status | default(0) == 200
   delay: 5
   retries: 24
+  no_log: "{{ deploy_no_log | default(true) }}"
+

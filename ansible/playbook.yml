@@ -43,6 +43,7 @@
         owner: root
         group: www-data
         mode: "0640"
+      no_log: true
 
     - name: Check certificate
       ansible.builtin.stat:
