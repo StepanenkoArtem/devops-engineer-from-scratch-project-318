@@ -18,6 +18,17 @@ nginx_vhost_http:
         return 301 https://$host$request_uri;
       }
 
+nginx_vhost_actuator:
+  - listen: "{{ public_actuator_port }}"
+    server_name: "{{ domain_name }}"
+    filename: "{{ public_actuator_port }}-{{ domain_name }}.conf"
+    extra_parameters: |
+      location /actuator/ {
+        auth_basic  "Metrics";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass http://localhost:{{ internal_actuator_port }};
+      }
+
 nginx_vhost_https:
   - listen: "443 ssl"
     ssl_protocols: "TLSv1.2 TLSv1.3"

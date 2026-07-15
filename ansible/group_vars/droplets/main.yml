@@ -1,8 +1,8 @@
 # Bootstrap
 non_root_user_name: "devops"
-ssh_port: '23332'
-password_auth_enabled: 'no'
-root_login_enabled: 'no'
+ssh_port: "23332"
+password_auth_enabled: "no"
+root_login_enabled: "no"
 
 db_host: "db-postgresql-hexlet4-do-user-13876020-0.i.db.ondigitalocean.com"
 db_port: "25060"
@@ -10,11 +10,17 @@ db_name: "defaultdb"
 db_sslmode: "require"
 
 application_port: 8080
+internal_actuator_port: 9090
+public_actuator_port: 9091
 
 domain_name: "bulletins.artem.diy"
 
-ports:
+public_ports:
   - "{{ ssh_port }}" # custom SSH port
   - "80"
   - "443"
+  - "{{ public_actuator_port }}"
+
+local_ports:
   - "{{ node_exporter_port }}"
+  - "{{ internal_actuator_port }}"
