@@ -2,7 +2,7 @@
   hosts: droplets
   become: true
 
-  tasks:
+  pre_tasks:
     - name: Ensure image_tag is a sha-<commit> tag
       ansible.builtin.assert:
         that:
@@ -10,22 +10,48 @@
           - image_tag | length > 0
           - image_tag is match('^sha-[0-9a-f]{7,40}$')
         fail_msg: "Docker image tag must be provided as sha-<commit> (7-40 hex chars)"
+
     - name: Create ssl_certificate directory
       ansible.builtin.file:
         path: /var/www/letsencrypt
         state: directory
         mode: "0755"
 
-    - name: Configure firewall
+    - name: Configure public ports
       community.general.ufw:
         rule: allow
         port: "{{ item }}"
-      loop: "{{ ports }}"
+      loop: "{{ public_ports }}"
+
+    - name: Configure local ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        src: "127.0.0.1"
+      loop: "{{ local_ports }}"
 
     - name: Enable firewall
       community.general.ufw:
         state: enabled
         default: deny
+
+    - name: Ensure /etc/nginx directory exists
+      ansible.builtin.file:
+        path: /etc/nginx
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Add a user to a password file and ensure permissions are set
+      community.general.htpasswd:
+        path: /etc/nginx/.htpasswd
+        password: "{{ metrics_password }}"
+        name: devops
+        owner: root
+        group: www-data
+        mode: "0640"
+      no_log: true
 
     - name: Check certificate
       ansible.builtin.stat:
@@ -34,19 +60,14 @@
 
     - name: Build nginx vhosts conditionally
       ansible.builtin.set_fact:
-        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+        nginx_vhosts: "{{ nginx_vhost_http + nginx_vhost_actuator + (nginx_vhost_https if cert_file.stat.exists else []) }}"
 
-    - name: Run nginx with HTTP only
-      ansible.builtin.include_role:
-        name: geerlingguy.nginx
+  roles:
+    - prometheus.prometheus.node_exporter
+    - geerlingguy.nginx
+    - geerlingguy.certbot
 
-    - name: Run handlers before certbot issuance
-      ansible.builtin.meta: flush_handlers
-
-    - name: Run certbot
-      ansible.builtin.include_role:
-        name: geerlingguy.certbot
-
+  tasks:
     - name: Re-check certificate
       ansible.builtin.stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
@@ -54,7 +75,7 @@
 
     - name: Re-build nginx vhosts conditionally to add TLS
       ansible.builtin.set_fact:
-        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+        nginx_vhosts: "{{ nginx_vhost_http + nginx_vhost_actuator + (nginx_vhost_https if cert_file.stat.exists else []) }}"
 
     - name: Re-Run nginx with TLS
       ansible.builtin.include_role:

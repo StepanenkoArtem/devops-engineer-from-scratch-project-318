@@ -19,6 +19,7 @@
     restart_policy: unless-stopped
     ports:
       - "127.0.0.1:{{ application_port }}:{{ application_port }}"
+      - "127.0.0.1:{{ internal_actuator_port }}:{{ internal_actuator_port }}"
     volumes:
       - "{{ deploy_log_path }}:/app/log"
       - "{{ deploy_tmp_path }}:/app/tmp"
@@ -36,11 +37,15 @@
 
       JAVA_OPTS: "-Xmx512m"
 
-  # TODO: rework Application Health-check to use actuator
 - name: Application Health-check
   ansible.builtin.uri:
-    url: "https://{{ domain_name }}/"
+    url: "http://{{ domain_name }}:{{ public_actuator_port }}/actuator/health"
+    user: devops
+    password: "{{ metrics_password }}"
+    force_basic_auth: true
   register: deploy_result
   until: deploy_result.status | default(0) == 200
   delay: 5
   retries: 24
+  no_log: "{{ deploy_no_log | default(true) }}"
+
