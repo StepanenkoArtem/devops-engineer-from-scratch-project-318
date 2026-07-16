@@ -30,7 +30,7 @@
         state: present
         key: "{{ item }}"
       with_file:
-        - public_keys/devops.pub
+        - "{{ public_keys_path }}"
 
     # TODO: harden sudo — replace NOPASSWD with password-required sudo and
     # supply the become password via Ansible Vault (defense in depth, so a
