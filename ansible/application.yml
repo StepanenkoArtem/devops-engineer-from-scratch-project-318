@@ -47,6 +47,7 @@
       ansible.builtin.apt:
         name: "python3-passlib"
         state: present
+        update_cache: true
 
     - name: Add a user to a password file and ensure permissions are set
       community.general.htpasswd:
@@ -70,9 +71,15 @@
   roles:
     - prometheus.prometheus.node_exporter
     - geerlingguy.nginx
-    - geerlingguy.certbot
 
   tasks:
+    - name: Run handlers after roles to relaod nginx
+      ansible.builtin.meta: flush_handlers
+
+    - name: Initial Certbot Run
+      ansible.builtin.include_role:
+        name: geerlingguy.certbot
+
     - name: Re-check certificate
       ansible.builtin.stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
