@@ -1,6 +1,6 @@
-ansible_ssh_private_key_file: "~/.ssh/devops"
+ansible_ssh_private_key_file: "~/.ssh/hexlet-admin"
 non_root_user_name: "devops"
-public_keys_path: "public_keys/devops.pub"
+public_keys_path: "public_keys/hexlet-admin.pub"
 
 db_host: "db-postgresql-hexlet4-do-user-13876020-0.i.db.ondigitalocean.com"
 db_port: "25060"

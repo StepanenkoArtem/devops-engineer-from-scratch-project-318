@@ -2,3 +2,4 @@
 ssh_port: "23332"
 password_auth_enabled: "no"
 root_login_enabled: "no"
+ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
