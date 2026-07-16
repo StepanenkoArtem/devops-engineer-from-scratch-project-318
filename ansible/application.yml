@@ -43,6 +43,11 @@
         group: root
         mode: "0755"
 
+    - name: Install passlib
+      ansible.builtin.apt:
+        name: "python3-passlib"
+        state: present
+
     - name: Add a user to a password file and ensure permissions are set
       community.general.htpasswd:
         path: /etc/nginx/.htpasswd
