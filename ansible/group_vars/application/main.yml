@@ -19,6 +19,6 @@ public_ports:
   - "443"
   - "{{ public_actuator_port }}"
 
-local_ports:
+private_ports:
   - "{{ node_exporter_port }}"
   - "{{ internal_actuator_port }}"

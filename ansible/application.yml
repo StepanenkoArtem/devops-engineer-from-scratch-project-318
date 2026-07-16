@@ -23,12 +23,12 @@
         port: "{{ item }}"
       loop: "{{ public_ports }}"
 
-    - name: Configure local ports
+    - name: Configure private ports
       community.general.ufw:
         rule: allow
         port: "{{ item }}"
-        src: "127.0.0.1"
-      loop: "{{ local_ports }}"
+        src: "{{ prometheus_private_address }}"
+      loop: "{{ private_ports }}"
 
     - name: Enable firewall
       community.general.ufw:
@@ -73,7 +73,7 @@
     - geerlingguy.nginx
 
   tasks:
-    - name: Run handlers after roles to relaod nginx
+    - name: Run handlers after roles to reload nginx
       ansible.builtin.meta: flush_handlers
 
     - name: Initial Certbot Run
