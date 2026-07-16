@@ -1,5 +1,5 @@
 - name: Application
-  hosts: droplets
+  hosts: application
   become: true
 
   pre_tasks:
