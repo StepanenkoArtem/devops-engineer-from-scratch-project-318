@@ -1,0 +1,3 @@
+docker_packages_state: present
+docker_users:
+  - "{{ non_root_user_name }}"

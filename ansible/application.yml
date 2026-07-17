@@ -27,7 +27,7 @@
       community.general.ufw:
         rule: allow
         port: "{{ item }}"
-        src: "{{ prometheus_private_address }}"
+        src: "{{ monitoring_private_address }}"
       loop: "{{ private_ports }}"
 
     - name: Enable firewall
@@ -66,7 +66,7 @@
 
     - name: Build nginx vhosts conditionally
       ansible.builtin.set_fact:
-        nginx_vhosts: "{{ nginx_vhost_http + nginx_vhost_actuator + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
 
   roles:
     - prometheus.prometheus.node_exporter
@@ -87,7 +87,7 @@
 
     - name: Re-build nginx vhosts conditionally to add TLS
       ansible.builtin.set_fact:
-        nginx_vhosts: "{{ nginx_vhost_http + nginx_vhost_actuator + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
 
     - name: Re-Run nginx with TLS
       ansible.builtin.include_role:

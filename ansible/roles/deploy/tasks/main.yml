@@ -9,7 +9,6 @@
     - "{{ deploy_tmp_path }}"
 
 - name: Start app container
-  no_log: "{{ deploy_no_log | default(true) }}"
 
   community.docker.docker_container:
     name: "{{ deploy_docker_container }}"
@@ -19,7 +18,7 @@
     restart_policy: unless-stopped
     ports:
       - "127.0.0.1:{{ application_port }}:{{ application_port }}"
-      - "127.0.0.1:{{ internal_actuator_port }}:{{ internal_actuator_port }}"
+      - "127.0.0.1:{{ private_actuator_port }}:{{ private_actuator_port }}"
     volumes:
       - "{{ deploy_log_path }}:/app/log"
       - "{{ deploy_tmp_path }}:/app/tmp"
@@ -36,13 +35,12 @@
       STORAGE_S3_SECRETKEY: "{{ vault_s3_secret_key }}"
 
       JAVA_OPTS: "-Xmx512m"
+  no_log: "{{ deploy_no_log | default(true) }}"
 
 - name: Application Health-check
   ansible.builtin.uri:
-    url: "http://{{ domain_name }}:{{ public_actuator_port }}/actuator/health"
+    url: "http://127.0.0.1:{{ private_actuator_port }}/actuator/health"
     user: devops
-    password: "{{ metrics_password }}"
-    force_basic_auth: true
   register: deploy_result
   until: deploy_result.status | default(0) == 200
   delay: 5

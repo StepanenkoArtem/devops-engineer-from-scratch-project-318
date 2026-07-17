@@ -1,8 +1,0 @@
-- name: Prometheus
-  hosts: prometheus
-  become: true
-
-  # pre_tasks:
-  # roles:
-  # tasks:
-  # handlers:

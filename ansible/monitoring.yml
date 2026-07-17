@@ -1,0 +1,43 @@
+- name: Prometheus
+  hosts: monitoring
+  become: true
+
+  pre_tasks:
+    - name: Create prometheus config directory
+      ansible.builtin.file:
+        path: "{{ prometheus_config_directory }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy Prometheus config
+      ansible.builtin.copy:
+        src: prometheus/prometheus.yml
+        dest: "{{ prometheus_config_directory }}/prometheus.yml"
+        owner: "root"
+        mode: "0755"
+
+  roles:
+    - geerlingguy.docker
+
+  tasks:
+    - name: Create a network
+      community.docker.docker_network:
+        name: "{{ monitoring_network }}"
+
+    - name: Create a Prometheus data volume
+      community.docker.docker_volume:
+        name: prometheus-data
+
+    - name: Create Prometheus container
+      community.docker.docker_container:
+        name: prometheus
+        image: prom/prometheus
+        volumes:
+          - "{{ prometheus_config_directory }}:{{ prometheus_config_directory }}:ro"
+          - "prometheus-data:/prometheus"
+        networks:
+          - name: "{{ monitoring_network }}"
+        ports:
+          - "127.0.0.1:9090:9090"
+
+  # handlers:
