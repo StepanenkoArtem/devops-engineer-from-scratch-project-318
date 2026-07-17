@@ -8,11 +8,11 @@ scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
   - job_name: 'node'
 
-    # Override the global default and scrape targets from this job every 5 seconds.
-    scrape_interval: 15s
-
     static_configs:
       - targets: ["{{ application_private_address }}:{{ node_exporter_port }}"]
+        labels: { role: 'application' }
+      - targets: ["{{ monitoring_private_address }}:{{ node_exporter_port }}"]
+        labels: { role: 'monitoring' }
 
   - job_name: 'application'
     metrics_path: "/actuator/prometheus"

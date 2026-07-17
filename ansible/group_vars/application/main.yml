@@ -7,7 +7,5 @@ db_port: "25060"
 db_name: "defaultdb"
 db_sslmode: "require"
 
-
-
 domain_name: "bulletins.artem.diy"
 

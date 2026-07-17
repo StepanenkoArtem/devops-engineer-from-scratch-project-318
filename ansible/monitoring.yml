@@ -22,9 +22,9 @@
             check config /tmp/prometheus.yml
       notify: Restart prometheus
 
-
   roles:
     - geerlingguy.docker
+    - prometheus.prometheus.node_exporter
 
   tasks:
     - name: Create a network
@@ -48,10 +48,14 @@
         ports:
           - "127.0.0.1:9090:9090"
         restart_policy: always
+    - name: Allow docker network to reach node_exporter
+      community.general.ufw:
+        rule: allow
+        port: "{{ node_exporter_port }}"
+        proto: tcp
+        from_ip: "172.16.0.0/12"
+
 
   handlers:
     - name: Restart prometheus
-      community.docker.docker_container:
-        name: prometheus
-        state: started
-        restart: true
+      ansible.builtin.command: docker kill -s HUP prometheus
