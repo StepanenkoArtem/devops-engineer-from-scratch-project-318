@@ -28,7 +28,7 @@
         rule: allow
         port: "{{ item }}"
         src: "{{ monitoring_private_address }}"
-      loop: "{{ private_ports }}"
+      loop: "{{ monitoring_ports }}"
 
     - name: Enable firewall
       community.general.ufw:
@@ -42,22 +42,6 @@
         owner: root
         group: root
         mode: "0755"
-
-    - name: Install passlib
-      ansible.builtin.apt:
-        name: "python3-passlib"
-        state: present
-        update_cache: true
-
-    - name: Add a user to a password file and ensure permissions are set
-      community.general.htpasswd:
-        path: /etc/nginx/.htpasswd
-        password: "{{ metrics_password }}"
-        name: devops
-        owner: root
-        group: www-data
-        mode: "0640"
-      no_log: true
 
     - name: Check certificate
       ansible.builtin.stat:
