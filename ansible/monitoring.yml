@@ -10,11 +10,18 @@
         mode: "0755"
 
     - name: Copy Prometheus config
-      ansible.builtin.copy:
-        src: prometheus/prometheus.yml
+      ansible.builtin.template:
+        src: prometheus/prometheus.yml.j2
         dest: "{{ prometheus_config_directory }}/prometheus.yml"
         owner: "root"
-        mode: "0755"
+        mode: "0644"
+        validate: >-
+            docker run --rm --user root
+            -v %s:/tmp/prometheus.yml:ro
+            --entrypoint promtool prom/prometheus
+            check config /tmp/prometheus.yml
+      notify: Restart prometheus
+
 
   roles:
     - geerlingguy.docker
@@ -31,6 +38,7 @@
     - name: Create Prometheus container
       community.docker.docker_container:
         name: prometheus
+        state: started
         image: prom/prometheus
         volumes:
           - "{{ prometheus_config_directory }}:{{ prometheus_config_directory }}:ro"
@@ -39,5 +47,11 @@
           - name: "{{ monitoring_network }}"
         ports:
           - "127.0.0.1:9090:9090"
+        restart_policy: always
 
-  # handlers:
+  handlers:
+    - name: Restart prometheus
+      community.docker.docker_container:
+        name: prometheus
+        state: started
+        restart: true

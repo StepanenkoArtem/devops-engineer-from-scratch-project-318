@@ -7,16 +7,7 @@ db_port: "25060"
 db_name: "defaultdb"
 db_sslmode: "require"
 
-application_port: 8080
-actuator_port: 9090
+
 
 domain_name: "bulletins.artem.diy"
 
-public_ports:
-  - "{{ ssh_port }}" # custom SSH port
-  - "80"
-  - "443"
-
-monitoring_ports:
-  - "{{ node_exporter_port }}"
-  - "{{ actuator_port }}"

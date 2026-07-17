@@ -5,3 +5,15 @@ root_login_enabled: "no"
 ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
 monitoring_private_address: "10.114.0.3"
 application_private_address: "10.114.0.2"
+
+application_port: 8080
+actuator_port: 9090
+
+public_ports:
+  - "{{ ssh_port }}" # custom SSH port
+  - "80"
+  - "443"
+
+monitoring_ports:
+  - "{{ node_exporter_port }}"
+  - "{{ actuator_port }}"
