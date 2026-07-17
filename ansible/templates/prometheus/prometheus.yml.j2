@@ -9,7 +9,7 @@ scrape_configs:
   - job_name: 'node'
 
     # Override the global default and scrape targets from this job every 5 seconds.
-    scrape_interval: 13s
+    scrape_interval: 15s
 
     static_configs:
       - targets: ["{{ application_private_address }}:{{ node_exporter_port }}"]
