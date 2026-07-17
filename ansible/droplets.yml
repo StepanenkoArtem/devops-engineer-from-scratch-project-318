@@ -8,8 +8,9 @@
 #
 # After a successful run, root@22 no longer works, so re-running THIS
 # playbook fails at connection time (root on port 22 is gone) — that is
-# expected, not a bug. Repeatable configuration belongs in the main
-# playbook (playbook.yml), which connects as `devops` on the new port.
+# expected, not a bug. Repeatable configuration belongs in the per-role
+# playbooks (application.yml / monitoring.yml), which connect as the
+# non-root user on the custom SSH port.
 
 # play 1
 - name: Create non-root user environment

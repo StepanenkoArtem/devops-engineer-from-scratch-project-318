@@ -2,58 +2,115 @@
 
 [![Actions Status](https://github.com/StepanenkoArtem/devops-engineer-from-scratch-project-318/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/StepanenkoArtem/devops-engineer-from-scratch-project-318/actions)
 
-## Server bootstrap (Ansible)
+## Overview
 
-`ansible/bootstrap.yml` is a **one-shot** playbook: it takes a fresh droplet (root SSH login open on port 22) and
-transitions it to a hardened state — a non-root `devops` user with key-based access, SSH moved to a custom port, root
-and password authentication disabled, and UFW enabled with a default-deny inbound policy.
+Two DigitalOcean droplets in a shared VPC:
 
-It is meant to run **once**, right after a droplet is created or reset. Because the playbook itself closes root@22,
-re-running it will fail at connection time — that is expected, not a failure of the run. Ongoing, repeatable
-configuration belongs in the main playbook (`playbook.yml`), which connects as `devops` on the configured port.
+| Host         | Role                    | Public IP         | VPC (private) IP | User     |
+| ------------ | ----------------------- | ----------------- | ---------------- | -------- |
+| `hexlet-app` | application + nginx/TLS | `165.232.125.175` | `10.114.0.2`     | `devops` |
+| `monitoring` | Prometheus (+ stack)    | `165.227.174.50`  | `10.114.0.3`     | `admin`  |
+
+All host-to-host traffic (metrics scraping) goes over the **private VPC network** — nothing about observability is
+exposed to the public internet. SSH is on a custom port, key-based, root login disabled (see bootstrap).
+
+The application is served over HTTPS at **https://bulletins.artem.diy** (nginx + Let's Encrypt on `hexlet-app`).
+
+## Playbooks & Make targets
+
+| Playbook          | Runs on       | Make target                        | Purpose                                |
+| ----------------- | ------------- | ---------------------------------- | -------------------------------------- |
+| `droplets.yml`    | any droplet   | `make droplet HOST=<host>`         | one-shot bootstrap of a fresh droplet  |
+| `application.yml` | `application` | `make application IMAGE_TAG=sha-…` | deploy the app (nginx, TLS, container) |
+| `monitoring.yml`  | `monitoring`  | `make monitoring`                  | deploy Prometheus + node_exporter      |
+
+Install dependencies (Ansible roles + collections + Python deps) once:
 
 ```sh
-ansible-playbook ansible/bootstrap.yml -i ansible/inventory.ini
+make requirements
 ```
+
+## Server bootstrap (Ansible)
+
+`ansible/droplets.yml` is a **one-shot** playbook: it takes a fresh droplet (root SSH login open on port 22) and
+transitions it to a hardened state — a non-root user with key-based access, SSH moved to a custom port, root and
+password authentication disabled, and UFW enabled with a default-deny inbound policy.
+
+Run it **once** per droplet, right after creation/reset, targeting a single host:
+
+```sh
+make droplet HOST=application    # or: HOST=monitoring
+```
+
+Because the playbook itself closes root@22, re-running it will fail at connection time — that is expected, not a bug.
+Ongoing, repeatable configuration lives in the per-role playbooks (`application.yml`, `monitoring.yml`), which connect
+as the non-root user on the configured port.
 
 ## Application deploy
 
-After bootstrap, install the dependencies once (`install -r` installs both the roles and the collections from the file):
+Deploy a specific image. The play **requires** `image_tag` — an immutable `sha-<commit>` tag (per ADR-0001; there is no
+`latest` default, and the play fails fast if the tag is missing):
 
 ```sh
-ansible-galaxy install -r ansible/requirements.yml
+make application IMAGE_TAG=sha-<commit>
 ```
 
-Then deploy a specific image. The playbook **requires** `image_tag` — an immutable `sha-<commit>` tag (per ADR-0001;
-there is no `latest` default, and the play fails fast if the tag is missing). Deploy via the Makefile:
+It sets up nginx + a Let's Encrypt TLS certificate and deploys the app container. The vault password file path is set in
+`ansible.cfg` (`vault_password_file`), so no `--vault-password-file` flag is needed — just make sure that file exists
+locally.
+
+## Monitoring — Prometheus
+
+`ansible/monitoring.yml` deploys Prometheus on the `monitoring` droplet as a Docker container:
+
+- own Docker network `monitoring` (for the future stack — Grafana/Alertmanager);
+- **config** as a host bind-mount `/etc/prometheus/prometheus.yml` (rendered from
+  `templates/prometheus/prometheus.yml.j2` and **validated with `promtool`** before it is applied — a bad config never
+  reaches the running server);
+- **data** as a named volume `prometheus-data` → `/prometheus` (survives container recreation);
+- published on **`127.0.0.1:9090` only** — Prometheus is internal. It is not exposed publicly; the public-facing UI will
+  be Grafana later. On config change the container is reloaded via `SIGHUP`.
+
+### Scrape targets
+
+All targets are scraped over the **private VPC network**; none is publicly reachable.
+
+| Job           | Target(s)                              | Path                   | Notes                                |
+| ------------- | -------------------------------------- | ---------------------- | ------------------------------------ |
+| `node`        | `10.114.0.2:9100` (`role=application`) | `/metrics`             | node_exporter on the app host        |
+|               | `10.114.0.3:9100` (`role=monitoring`)  | `/metrics`             | node_exporter on the monitoring host |
+| `application` | `10.114.0.2:9090`                      | `/actuator/prometheus` | Spring Boot Actuator over VPC        |
+
+### Access & verification (`up == 1`)
+
+Prometheus listens on loopback only, so reach it through an **SSH tunnel** from your machine:
 
 ```sh
-make deploy IMAGE_TAG=sha-<commit>
+ssh -L 9090:localhost:9090 -i ~/.ssh/monitoring -p 23332 admin@165.227.174.50
+# then open http://localhost:9090/graph  (or /targets)
 ```
 
-or call the playbook directly:
+Verify every target is healthy (`up == 1`) — via the tunnel, or directly on the monitoring host:
 
 ```sh
-ansible-playbook ansible/playbook.yml -i ansible/inventory.ini -e image_tag=sha-<commit>
+# expect one line per target, all up=1
+curl -s 'http://localhost:9090/api/v1/query?query=up' \
+  | jq -r '.data.result[] | "\(.metric.job)\t\(.metric.instance)\tup=\(.value[1])"'
+
+# count of healthy targets (expect 3)
+curl -s 'http://localhost:9090/api/v1/query?query=count(up==1)' | jq -r '.data.result[0].value[1]'
 ```
-
-It connects as `devops` on the configured SSH port, sets up nginx + a Let's Encrypt TLS certificate, and deploys the app
-container.
-
-The vault password file path is set in `ansible.cfg` (`vault_password_file`), so no `--vault-password-file` flag is
-needed — just make sure that file exists locally.
 
 ## Observability — metrics
 
-Two metric sources run on the app droplet:
+Two metric sources are collected:
 
-- **Host metrics** — `node_exporter` (role `prometheus.prometheus.node_exporter`) on port `9100`, behind basic auth
-  (user `prometheus`). The port is firewalled to loopback only (`local_ports` → ufw `src 127.0.0.1`), so it is not
-  reachable from the public internet — scrape it locally or, later, from a monitoring host on the private network.
-- **Application metrics** — Spring Boot Actuator exposes `/actuator/prometheus` on the management port `9090`
-  (`internal_actuator_port`), published by the container on `127.0.0.1:9090`. nginx reverse-proxies it on the public
-  port `9091` (`public_actuator_port`) under `location /actuator/` with basic auth (`/etc/nginx/.htpasswd`, user
-  `devops`). nginx access logs are emitted as JSON (`nginx_log_format` with `escape=json`) for downstream processing.
+- **Host metrics** — `node_exporter` (role `prometheus.prometheus.node_exporter`) on port `9100`, running on **both**
+  hosts. It listens on all interfaces but UFW allows `9100` only from the monitoring node over the VPC — not reachable
+  from the public internet. No basic auth: access is controlled at the network layer (VPC + firewall).
+- **Application metrics** — Spring Boot Actuator exposes `/actuator/prometheus` on management port `9090`, published by
+  the container on the app host's **private** address `10.114.0.2:9090` (VPC only, not public). nginx access logs are
+  emitted as JSON (`nginx_log_format` with `escape=json`) for downstream processing.
 
 ### Mandatory host metrics (node_exporter)
 
@@ -79,29 +136,16 @@ Two metric sources run on the app droplet:
 
 All application metrics carry `application` and `environment` labels (from `management.metrics.tags`).
 
-### Local verification (run on the droplet)
-
-```sh
-# host metrics — node_exporter (loopback + basic auth)
-curl -u prometheus:$NODE_EXPORTER_PASSWORD http://localhost:9100/metrics | head
-
-# app metrics via nginx reverse proxy (public 9091 + basic auth)
-curl -u devops:$METRICS_PASSWORD http://localhost:9091/actuator/prometheus | head
-
-# app health via nginx
-curl -u devops:$METRICS_PASSWORD http://localhost:9091/actuator/health
-
-# app metrics straight from the container (internal 9090, no auth, loopback only)
-curl http://localhost:9090/actuator/prometheus | head
-```
-
 ## Configuration variables
 
-- **Group config** — `ansible/group_vars/droplets/main.yml`: `ssh_port`, `non_root_user_name`, auth toggles,
-  `public_ports` / `local_ports` (ufw allow-all vs loopback-only), `domain_name`, DB settings, `application_port`,
-  `internal_actuator_port` / `public_actuator_port`.
-- **Role config** — `ansible/group_vars/droplets/{nginx,certbot,docker,node_exporter}.yml` (nginx also defines
-  `nginx_log_format` for JSON access logs and `nginx_vhost_actuator`).
-- **Secrets** — `ansible/group_vars/droplets/vault.yml` (Ansible Vault).
-- **Connection** — `ansible/inventory.ini` `[droplets:vars]` (`ansible_*`); `ansible_user` and `ansible_port` reference
-  the group config via `{{ non_root_user_name }}` and `{{ ssh_port }}`, so the port lives in exactly one place.
+Variables are split by scope across `ansible/group_vars/`:
+
+- **Shared (both hosts)** — `group_vars/droplets/`: bootstrap (`ssh_port`, `non_root_user_name`, auth toggles), private
+  addresses (`application_private_address`, `monitoring_private_address`), metric ports (`actuator_port`,
+  `node_exporter.yml`), `docker.yml`, `accept-new` SSH arg, and secrets in `vault.yml` (Ansible Vault).
+- **App-only** — `group_vars/application/`: `nginx.yml`, `certbot.yml`, `domain_name`, DB settings, `public_ports`,
+  `monitoring_ports` (ufw: what the monitoring node may reach over the VPC).
+- **Monitoring-only** — `group_vars/monitoring/`: connection key/user, `monitoring_network`,
+  `prometheus_config_directory`.
+- **Connection** — `ansible/inventory.ini`: parent group `droplets` with children `application` / `monitoring`; shared
+  `ansible_*` connection vars reference the group config (`{{ non_root_user_name }}`, `{{ ssh_port }}`).
