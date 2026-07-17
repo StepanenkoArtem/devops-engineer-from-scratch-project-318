@@ -18,7 +18,7 @@
     restart_policy: unless-stopped
     ports:
       - "127.0.0.1:{{ application_port }}:{{ application_port }}"
-      - "127.0.0.1:{{ actuator_port }}:{{ actuator_port }}"
+      - "{{ application_private_address }}:{{ actuator_port }}:{{ actuator_port }}"
     volumes:
       - "{{ deploy_log_path }}:/app/log"
       - "{{ deploy_tmp_path }}:/app/tmp"
@@ -39,7 +39,7 @@
 
 - name: Application Health-check
   ansible.builtin.uri:
-    url: "http://127.0.0.1:{{ actuator_port }}/actuator/health"
+    url: "http://{{ application_private_address }}:{{ actuator_port }}/actuator/health"
     user: devops
   register: deploy_result
   until: deploy_result.status | default(0) == 200
