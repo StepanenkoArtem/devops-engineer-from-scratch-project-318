@@ -73,7 +73,9 @@ locally.
 
 ### Scrape targets
 
-All targets are scraped over the **private VPC network**; none is publicly reachable.
+All targets are scraped over the **private VPC network**; none is publicly reachable. The list is **generated from the
+Ansible inventory** (`prometheus.yml.j2` iterates `groups`/`hostvars`), so adding a droplet to the inventory
+automatically adds it as a `node` target — no manual edit of the Prometheus config.
 
 | Job           | Target(s)                              | Path                   | Notes                                |
 | ------------- | -------------------------------------- | ---------------------- | ------------------------------------ |
@@ -101,12 +103,18 @@ curl -s 'http://localhost:9090/api/v1/query?query=up' \
 curl -s 'http://localhost:9090/api/v1/query?query=count(up==1)' | jq -r '.data.result[0].value[1]'
 ```
 
+### Alert rules
+
+Alerting rules live in `ansible/files/prometheus/rules/alerts.yml`, copied to `/etc/prometheus/rules/` and loaded via
+`rule_files` in the Prometheus config. Currently one rule — `InstanceDown` (`up == 0` for `1m`, `severity: critical`),
+visible under `/alerts`. Rules only **evaluate** here; actual notification delivery (Alertmanager) is a later step.
+
 ## Observability — metrics
 
 Two metric sources are collected:
 
 - **Host metrics** — `node_exporter` (role `prometheus.prometheus.node_exporter`) on port `9100`, running on **both**
-  hosts. It listens on all interfaces but UFW allows `9100` only from the monitoring node over the VPC — not reachable
+  hosts. It listens on all interfaces but UFW allows `9100` only from within the private VPC (`vpc_net`) — not reachable
   from the public internet. No basic auth: access is controlled at the network layer (VPC + firewall).
 - **Application metrics** — Spring Boot Actuator exposes `/actuator/prometheus` on management port `9090`, published by
   the container on the app host's **private** address `10.114.0.2:9090` (VPC only, not public). nginx access logs are
@@ -138,14 +146,15 @@ All application metrics carry `application` and `environment` labels (from `mana
 
 ## Configuration variables
 
-Variables are split by scope across `ansible/group_vars/`:
+Variables live at the altitude where their value is constant:
 
-- **Shared (both hosts)** — `group_vars/droplets/`: bootstrap (`ssh_port`, `non_root_user_name`, auth toggles), private
-  addresses (`application_private_address`, `monitoring_private_address`), metric ports (`actuator_port`,
-  `node_exporter.yml`), `docker.yml`, `accept-new` SSH arg, and secrets in `vault.yml` (Ansible Vault).
-- **App-only** — `group_vars/application/`: `nginx.yml`, `certbot.yml`, `domain_name`, DB settings, `public_ports`,
-  `monitoring_ports` (ufw: what the monitoring node may reach over the VPC).
-- **Monitoring-only** — `group_vars/monitoring/`: connection key/user, `monitoring_network`,
-  `prometheus_config_directory`.
-- **Connection** — `ansible/inventory.ini`: parent group `droplets` with children `application` / `monitoring`; shared
-  `ansible_*` connection vars reference the group config (`{{ non_root_user_name }}`, `{{ ssh_port }}`).
+- **Per-host** — `ansible/inventory.ini`, inline on each host: `private_address` (the host's VPC IP, used to build
+  scrape targets and reach exporters).
+- **Per-group** — `role` (`group_vars/application` → `application`, `group_vars/monitoring` → `monitoring`; becomes the
+  `role` label on `node` metrics), plus app-only (`nginx.yml`, `certbot.yml`, `domain_name`, DB settings) and
+  monitoring-only (connection key/user, `monitoring_network`, `prometheus_config_directory`).
+- **Shared (both hosts)** — `group_vars/droplets/`: bootstrap (`ssh_port`, `non_root_user_name`, auth toggles),
+  `vpc_net` (VPC CIDR for firewall rules), ports (`actuator_port`, `node_exporter_port`, `public_ports`,
+  `monitoring_ports`), `docker.yml`, the `accept-new` SSH arg, and secrets in `vault.yml` (Ansible Vault).
+- **Connection** — parent group `droplets` with children `application` / `monitoring`; shared `ansible_*` connection
+  vars reference the group config (`{{ non_root_user_name }}`, `{{ ssh_port }}`).
