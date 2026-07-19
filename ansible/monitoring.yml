@@ -26,6 +26,11 @@
         mode: "0644"
       notify: Restart prometheus
 
+  roles:
+    - geerlingguy.docker
+    - prometheus.prometheus.node_exporter
+
+  tasks:
     - name: Copy Prometheus config
       ansible.builtin.template:
         src: prometheus/prometheus.yml.j2
@@ -36,15 +41,10 @@
         validate: >-
           docker run --rm --user root
           -v %s:/tmp/prometheus.yml:ro
-          --entrypoint promtool prom/prometheus
+          --entrypoint promtool {{ prometheus_image }}
           check config /tmp/prometheus.yml
       notify: Restart prometheus
 
-  roles:
-    - geerlingguy.docker
-    - prometheus.prometheus.node_exporter
-
-  tasks:
     - name: Create a network
       community.docker.docker_network:
         name: "{{ monitoring_network }}"
@@ -57,7 +57,7 @@
       community.docker.docker_container:
         name: prometheus
         state: started
-        image: prom/prometheus
+        image: "{{ prometheus_image }}"
         volumes:
           - "{{ prometheus_config_directory }}:{{ prometheus_config_directory }}:ro"
           - "prometheus-data:/prometheus"

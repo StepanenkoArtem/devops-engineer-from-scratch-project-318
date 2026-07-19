@@ -40,7 +40,6 @@
 - name: Application Health-check
   ansible.builtin.uri:
     url: "http://{{ private_address }}:{{ actuator_port }}/actuator/health"
-    user: devops
   register: deploy_result
   until: deploy_result.status | default(0) == 200
   delay: 5

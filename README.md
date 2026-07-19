@@ -114,8 +114,10 @@ visible under `/alerts`. Rules only **evaluate** here; actual notification deliv
 Two metric sources are collected:
 
 - **Host metrics** — `node_exporter` (role `prometheus.prometheus.node_exporter`) on port `9100`, running on **both**
-  hosts. It listens on all interfaces but UFW allows `9100` only from within the private VPC (`vpc_net`) — not reachable
-  from the public internet. No basic auth: access is controlled at the network layer (VPC + firewall).
+  hosts. It listens on all interfaces but is firewalled by UFW — not reachable from the public internet. The access rule
+  differs by who scrapes it: on the **app host** UFW allows `9100` from the VPC (`vpc_net`), so the monitoring node can
+  scrape it cross-host; on the **monitoring host** node_exporter is scraped by the local Prometheus container, so `9100`
+  is allowed from the Docker bridge range. No basic auth: access is controlled at the network layer.
 - **Application metrics** — Spring Boot Actuator exposes `/actuator/prometheus` on management port `9090`, published by
   the container on the app host's **private** address `10.114.0.2:9090` (VPC only, not public). nginx access logs are
   emitted as JSON (`nginx_log_format` with `escape=json`) for downstream processing.
