@@ -27,7 +27,7 @@
       community.general.ufw:
         rule: allow
         port: "{{ item }}"
-        src: "{{ monitoring_private_address }}"
+        src: "{{ vpc_net }}"
       loop: "{{ monitoring_ports }}"
 
     - name: Enable firewall

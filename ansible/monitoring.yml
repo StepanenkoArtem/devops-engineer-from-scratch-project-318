@@ -16,10 +16,10 @@
         owner: "root"
         mode: "0644"
         validate: >-
-            docker run --rm --user root
-            -v %s:/tmp/prometheus.yml:ro
-            --entrypoint promtool prom/prometheus
-            check config /tmp/prometheus.yml
+          docker run --rm --user root
+          -v %s:/tmp/prometheus.yml:ro
+          --entrypoint promtool prom/prometheus
+          check config /tmp/prometheus.yml
       notify: Restart prometheus
 
   roles:
@@ -55,7 +55,7 @@
         proto: tcp
         from_ip: "172.16.0.0/12"
 
-
   handlers:
     - name: Restart prometheus
       ansible.builtin.command: docker kill -s HUP prometheus
+      changed_when: true
