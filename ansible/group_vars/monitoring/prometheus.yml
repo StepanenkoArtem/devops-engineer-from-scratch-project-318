@@ -1,0 +1,2 @@
+prometheus_config_directory: "/etc/prometheus"
+prometheus_image: "prom/prometheus:v3.13.1"

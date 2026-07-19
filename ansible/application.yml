@@ -1,5 +1,5 @@
 - name: Application
-  hosts: droplets
+  hosts: application
   become: true
 
   pre_tasks:
@@ -23,12 +23,12 @@
         port: "{{ item }}"
       loop: "{{ public_ports }}"
 
-    - name: Configure local ports
+    - name: Configure private ports
       community.general.ufw:
         rule: allow
         port: "{{ item }}"
-        src: "127.0.0.1"
-      loop: "{{ local_ports }}"
+        src: "{{ vpc_net }}"
+      loop: "{{ monitoring_ports }}"
 
     - name: Enable firewall
       community.general.ufw:
@@ -43,16 +43,6 @@
         group: root
         mode: "0755"
 
-    - name: Add a user to a password file and ensure permissions are set
-      community.general.htpasswd:
-        path: /etc/nginx/.htpasswd
-        password: "{{ metrics_password }}"
-        name: devops
-        owner: root
-        group: www-data
-        mode: "0640"
-      no_log: true
-
     - name: Check certificate
       ansible.builtin.stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
@@ -60,14 +50,20 @@
 
     - name: Build nginx vhosts conditionally
       ansible.builtin.set_fact:
-        nginx_vhosts: "{{ nginx_vhost_http + nginx_vhost_actuator + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
 
   roles:
     - prometheus.prometheus.node_exporter
     - geerlingguy.nginx
-    - geerlingguy.certbot
 
   tasks:
+    - name: Run handlers after roles to reload nginx
+      ansible.builtin.meta: flush_handlers
+
+    - name: Initial Certbot Run
+      ansible.builtin.include_role:
+        name: geerlingguy.certbot
+
     - name: Re-check certificate
       ansible.builtin.stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
@@ -75,7 +71,7 @@
 
     - name: Re-build nginx vhosts conditionally to add TLS
       ansible.builtin.set_fact:
-        nginx_vhosts: "{{ nginx_vhost_http + nginx_vhost_actuator + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
 
     - name: Re-Run nginx with TLS
       ansible.builtin.include_role:

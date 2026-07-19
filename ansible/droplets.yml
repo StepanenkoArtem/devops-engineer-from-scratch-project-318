@@ -8,8 +8,9 @@
 #
 # After a successful run, root@22 no longer works, so re-running THIS
 # playbook fails at connection time (root on port 22 is gone) — that is
-# expected, not a bug. Repeatable configuration belongs in the main
-# playbook (playbook.yml), which connects as `devops` on the new port.
+# expected, not a bug. Repeatable configuration belongs in the per-role
+# playbooks (application.yml / monitoring.yml), which connect as the
+# non-root user on the custom SSH port.
 
 # play 1
 - name: Create non-root user environment
@@ -17,6 +18,7 @@
   vars:
     ansible_user: root
     ansible_port: 22
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
 
   tasks:
     - name: Create non-root user
@@ -30,7 +32,7 @@
         state: present
         key: "{{ item }}"
       with_file:
-        - public_keys/devops.pub
+        - "{{ public_keys_path }}"
 
     # TODO: harden sudo — replace NOPASSWD with password-required sudo and
     # supply the become password via Ansible Vault (defense in depth, so a
@@ -102,6 +104,7 @@
   vars:
     ansible_user: "{{ non_root_user_name }}"
     ansible_port: "{{ ssh_port }}"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
 
   tasks:
     - name: Disable auth by password and root

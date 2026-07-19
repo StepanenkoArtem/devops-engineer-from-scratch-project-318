@@ -42,4 +42,4 @@ Deploy the image built for a specific commit (see the repo `Makefile`):
 
 or invoke the playbook directly:
 
-    ansible-playbook ansible/playbook.yml -i ansible/inventory.ini -e image_tag=sha-8be5c56
+    ansible-playbook ansible/application.yml -i ansible/inventory.ini -e image_tag=sha-8be5c56
