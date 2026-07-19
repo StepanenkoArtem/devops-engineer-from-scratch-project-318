@@ -3,7 +3,6 @@ ssh_port: "23332"
 password_auth_enabled: "no"
 root_login_enabled: "no"
 vpc_net: "10.114.0.0/20"
-ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
 
 application_port: 8080
 actuator_port: 9090

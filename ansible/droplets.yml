@@ -18,6 +18,7 @@
   vars:
     ansible_user: root
     ansible_port: 22
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
 
   tasks:
     - name: Create non-root user
@@ -103,6 +104,7 @@
   vars:
     ansible_user: "{{ non_root_user_name }}"
     ansible_port: "{{ ssh_port }}"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
 
   tasks:
     - name: Disable auth by password and root
