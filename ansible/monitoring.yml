@@ -9,10 +9,18 @@
         state: directory
         mode: "0755"
 
+    - name: Create prometheus rules directory
+      ansible.builtin.file:
+        path: "{{ prometheus_config_directory }}/rules"
+        state: directory
+        owner: "root"
+        group: "root"
+        mode: "0755"
+
     - name: Copy rules
       ansible.builtin.copy:
         src: prometheus/rules/
-        dest: "{{ prometheus_config_directory }}/rules"
+        dest: "{{ prometheus_config_directory }}/rules/"
         owner: "root"
         group: "root"
         mode: "0644"
