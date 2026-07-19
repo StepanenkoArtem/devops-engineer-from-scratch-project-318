@@ -1,0 +1,10 @@
+# TODO: Add more rules
+groups:
+  - name: basic
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "{{ $labels.instance }} is down"

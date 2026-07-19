@@ -23,3 +23,6 @@ scrape_configs:
       - targets: ["{{ hostvars[application].private_address }}:{{ actuator_port }}"]
 {% endfor %}
 
+rule_files:
+    - /etc/prometheus/rules/*.yml
+
