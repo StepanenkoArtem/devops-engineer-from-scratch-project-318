@@ -52,6 +52,7 @@
     ports:
       - "127.0.0.1:9090:9090"
     restart_policy: always
+
 - name: Allow docker network to reach node_exporter
   community.general.ufw:
     rule: allow

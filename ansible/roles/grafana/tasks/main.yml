@@ -1,0 +1,70 @@
+- name: Create grafana provisioning directory
+  ansible.builtin.file:
+    path: "{{ grafana_provisioning_directory }}"
+    state: directory
+    mode: "0755"
+
+# - name: Create grafana rules directory
+#   ansible.builtin.file:
+#     path: "{{ grafana_provisioning_directory }}/rules"
+#     state: directory
+#     owner: "root"
+#     group: "root"
+#     mode: "0755"
+
+- name: Copy datasource provisioning
+  ansible.builtin.template:
+    src: datasources/prometheus.yml.j2
+    dest: "{{ grafana_provisioning_directory }}/datasources/prometheus.yml"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart grafana
+
+- name: Copy dashboard provisioning
+  ansible.builtin.copy:
+    src: dashboards/
+    dest: "{{ grafana_provisioning_directory }}/dashboards/"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart grafana
+
+# - name: Copy Prometheus config
+#   ansible.builtin.template:
+#     src: prometheus.yml.j2
+#     dest: "{{ prometheus_config_directory }}/prometheus.yml"
+#     owner: "root"
+#     group: "root"
+#     mode: "0644"
+#     validate: >-
+#       docker run --rm --user root
+#       -v %s:/tmp/prometheus.yml:ro
+#       --entrypoint promtool {{ prometheus_image }}
+#       check config /tmp/prometheus.yml
+#   notify: Restart grafana
+
+- name: Create Grafana data volume
+  community.docker.docker_volume:
+    name: grafana-data
+
+- name: Create Grafana container
+  community.docker.docker_container:
+    name: grafana
+    state: started
+    image: "{{ grafana_image }}"
+    volumes:
+      - "{{ grafana_provisioning_directory }}:{{ grafana_provisioning_directory }}:ro"
+      - "grafana-data:/var/lib/grafana"
+    networks:
+      - name: "{{ monitoring_network }}"
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart_policy: unless-stopped
+
+- name: Allow docker network to reach prometheus port
+  community.general.ufw:
+    rule: allow
+    port: "{{ prometheus_port }}"
+    proto: tcp
+    from_ip: "172.16.0.0/12"
