@@ -6,5 +6,5 @@ certbot_create_if_missing: true
 certbot_admin_email: "artem.stepanenko.ks.ua@gmail.com"
 certbot_certs:
   - domains:
-      - "{{ domain_name }}"
+      - "{{ domain }}"
 certbot_auto_renew_options: "--webroot -w /var/www/letsencrypt --quiet"
