@@ -1,21 +1,13 @@
 - name: Create grafana provisioning directory
   ansible.builtin.file:
-    path: "{{ grafana_provisioning_directory }}"
+    path: "{{ grafana_provisioning_path }}"
     state: directory
     mode: "0755"
-
-# - name: Create grafana rules directory
-#   ansible.builtin.file:
-#     path: "{{ grafana_provisioning_directory }}/rules"
-#     state: directory
-#     owner: "root"
-#     group: "root"
-#     mode: "0755"
 
 - name: Copy datasource provisioning
   ansible.builtin.template:
     src: datasources/prometheus.yml.j2
-    dest: "{{ grafana_provisioning_directory }}/datasources/prometheus.yml"
+    dest: "{{ grafana_provisioning_path }}/datasources/prometheus.yml"
     owner: "root"
     group: "root"
     mode: "0644"
@@ -24,25 +16,11 @@
 - name: Copy dashboard provisioning
   ansible.builtin.copy:
     src: dashboards/
-    dest: "{{ grafana_provisioning_directory }}/dashboards/"
+    dest: "{{ grafana_provisioning_path }}/dashboards/"
     owner: "root"
     group: "root"
     mode: "0644"
   notify: Restart grafana
-
-# - name: Copy Prometheus config
-#   ansible.builtin.template:
-#     src: prometheus.yml.j2
-#     dest: "{{ prometheus_config_directory }}/prometheus.yml"
-#     owner: "root"
-#     group: "root"
-#     mode: "0644"
-#     validate: >-
-#       docker run --rm --user root
-#       -v %s:/tmp/prometheus.yml:ro
-#       --entrypoint promtool {{ prometheus_image }}
-#       check config /tmp/prometheus.yml
-#   notify: Restart grafana
 
 - name: Create Grafana data volume
   community.docker.docker_volume:
@@ -54,13 +32,18 @@
     state: started
     image: "{{ grafana_image }}"
     volumes:
-      - "{{ grafana_provisioning_directory }}:{{ grafana_provisioning_directory }}:ro"
+      - "{{ grafana_provisioning_path }}:{{ grafana_provisioning_path }}:ro"
       - "grafana-data:/var/lib/grafana"
     networks:
       - name: "{{ monitoring_network }}"
     ports:
       - "127.0.0.1:3000:3000"
+    env:
+      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
+      GF_SERVER_ROOT_URL: "{{ grafana_root_url }}"
     restart_policy: unless-stopped
+  no_log: "{{ no_log | default(true) }}"
 
 - name: Allow docker network to reach prometheus port
   community.general.ufw:
