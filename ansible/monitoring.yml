@@ -39,6 +39,7 @@
   roles:
     - prepare-nginx
     - prometheus.prometheus.node_exporter
+    - geerlingguy.nginx
     - prometheus
     - grafana
 
