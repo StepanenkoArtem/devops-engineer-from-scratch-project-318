@@ -1,0 +1,10 @@
+certbot_auto_renew: true
+certbot_auto_renew_user: root
+certbot_create_method: webroot
+certbot_webroot: /var/www/letsencrypt
+certbot_create_if_missing: true
+certbot_admin_email: "artem.stepanenko.ks.ua@gmail.com"
+certbot_certs:
+  - domains:
+      - "{{ domain }}"
+certbot_auto_renew_options: "--webroot -w /var/www/letsencrypt --quiet"

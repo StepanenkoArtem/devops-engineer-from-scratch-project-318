@@ -1,0 +1,16 @@
+- name: Ensure /etc/nginx directory exists
+  ansible.builtin.file:
+    path: /etc/nginx
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check TSL certificate
+  ansible.builtin.stat:
+    path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
+  register: cert_file
+
+- name: Build nginx vhosts conditionally
+  ansible.builtin.set_fact:
+    nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"

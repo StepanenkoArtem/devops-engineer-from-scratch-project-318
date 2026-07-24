@@ -11,7 +11,62 @@
       community.docker.docker_network:
         name: "{{ monitoring_network }}"
 
+    # TODO: consider to extract UFW to role
+    - name: Configure public ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop: "{{ public_ports }}"
+
+    - name: Configure private ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        src: "{{ vpc_net }}"
+      loop: "{{ monitoring_ports }}"
+
+    - name: Enable firewall
+      community.general.ufw:
+        state: enabled
+        default: deny
+
+    - name: Create ssl_certificate directory
+      ansible.builtin.file:
+        path: /var/www/letsencrypt
+        state: directory
+        mode: "0755"
+
   roles:
+    - prepare-nginx
     - prometheus.prometheus.node_exporter
     - prometheus
     - grafana
+
+  tasks:
+    - name: Initial Certbot Run
+      ansible.builtin.include_role:
+        name: geerlingguy.certbot
+
+    - name: Re-check nginx configuration
+      ansible.builtin.include_role:
+        name: prepare-nginx
+
+    - name: Re-Run nginx with TLS
+      ansible.builtin.include_role:
+        name: geerlingguy.nginx
+
+    - name: Run handlers after TLS certificate issuance
+      ansible.builtin.meta: flush_handlers
+
+    - name: Set renew cert hook
+      ansible.builtin.copy:
+        src: certbot/deploy_auto_renew.sh
+        dest: /etc/letsencrypt/renewal-hooks/deploy/
+        owner: "root"
+        mode: "0755"
+
+    - name: Turn off certbot.timer
+      ansible.builtin.systemd_service:
+        name: certbot.timer
+        enabled: false
+        state: stopped

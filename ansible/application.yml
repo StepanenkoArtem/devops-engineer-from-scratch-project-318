@@ -11,12 +11,6 @@
           - image_tag is match('^sha-[0-9a-f]{7,40}$')
         fail_msg: "Docker image tag must be provided as sha-<commit> (7-40 hex chars)"
 
-    - name: Create ssl_certificate directory
-      ansible.builtin.file:
-        path: /var/www/letsencrypt
-        state: directory
-        mode: "0755"
-
     - name: Configure public ports
       community.general.ufw:
         rule: allow
@@ -35,24 +29,14 @@
         state: enabled
         default: deny
 
-    - name: Ensure /etc/nginx directory exists
+    - name: Create ssl_certificate directory
       ansible.builtin.file:
-        path: /etc/nginx
+        path: /var/www/letsencrypt
         state: directory
-        owner: root
-        group: root
         mode: "0755"
 
-    - name: Check certificate
-      ansible.builtin.stat:
-        path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
-      register: cert_file
-
-    - name: Build nginx vhosts conditionally
-      ansible.builtin.set_fact:
-        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
-
   roles:
+    - prepare-nginx
     - prometheus.prometheus.node_exporter
     - geerlingguy.nginx
 
@@ -64,14 +48,9 @@
       ansible.builtin.include_role:
         name: geerlingguy.certbot
 
-    - name: Re-check certificate
-      ansible.builtin.stat:
-        path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
-      register: cert_file
-
-    - name: Re-build nginx vhosts conditionally to add TLS
-      ansible.builtin.set_fact:
-        nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+    - name: Re-check nginx configuration
+      ansible.builtin.include_role:
+        name: prepare-nginx
 
     - name: Re-Run nginx with TLS
       ansible.builtin.include_role:
