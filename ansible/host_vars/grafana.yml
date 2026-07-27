@@ -3,3 +3,4 @@ domain: "grafana.artem.diy"
 reverse_proxy_port: 3000
 monitoring_ports:
   - "{{ node_exporter_port }}"
+grafana_admin_user: "admin"

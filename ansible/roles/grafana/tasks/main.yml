@@ -42,9 +42,11 @@
     ports:
       - "127.0.0.1:3000:3000"
     env:
-      GF_SECURITY_ADMIN_USER: "admin"
+      GF_SECURITY_ADMIN_USER: "{{ grafana_admin_user }}"
       GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
       GF_SERVER_ROOT_URL: "{{ grafana_root_url }}"
+      GF_SECURITY_CSRF_TRUSTED_ORIGINS: "{{ grafana_csrf_trusted_origin }}"
+
     restart_policy: unless-stopped
   no_log: "{{ no_log | default(true) }}"
 
