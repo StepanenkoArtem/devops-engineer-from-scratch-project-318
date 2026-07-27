@@ -1,6 +1,13 @@
+apiVersion: 1
+
 prune: true
+
+deleteDatasources:
+  - name: Prometheus
+  - name: Prometheus1
 
 datasources:
   - name: Prometheus
     type: prometheus
     url: "http://prometheus:{{ prometheus_port }}"
+    uid: "prometheus"

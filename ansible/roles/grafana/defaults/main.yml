@@ -1,4 +1,5 @@
-grafana_image: "grafana/grafana:13.1-slim"
+grafana_image: "grafana/grafana:{{ grafana_image_tag }}"
+grafana_image_tag: "13.1-slim"
 grafana_provisioning_path: "/etc/grafana/provisioning"
 grafana_root_url: "https://{{ domain }}/"
 grafana_csrf_trusted_origin: "https://{{ domain }}"
