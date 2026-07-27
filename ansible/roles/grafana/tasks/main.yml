@@ -1,13 +1,16 @@
-- name: Create grafana provisioning directory
+- name: Create grafana provisioning directories
   ansible.builtin.file:
-    path: "{{ grafana_provisioning_path }}"
+    path: "{{ item }}"
     state: directory
     mode: "0755"
+  loop:
+    - "{{ grafana_datasources_path }}"
+    - "{{ grafana_dashboards_path }}"
 
 - name: Copy datasource provisioning
   ansible.builtin.template:
     src: datasources/prometheus.yml.j2
-    dest: "{{ grafana_provisioning_path }}/datasources/prometheus.yml"
+    dest: "{{ grafana_datasources_path }}/prometheus.yml"
     owner: "root"
     group: "root"
     mode: "0644"
@@ -16,7 +19,7 @@
 - name: Copy dashboard provisioning
   ansible.builtin.copy:
     src: dashboards/
-    dest: "{{ grafana_provisioning_path }}/dashboards/"
+    dest: "{{ grafana_dashboards_path }}"
     owner: "root"
     group: "root"
     mode: "0644"

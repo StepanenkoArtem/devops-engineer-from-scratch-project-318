@@ -44,6 +44,15 @@
     - grafana
 
   tasks:
+    - name: Run handlers before restarting nginx
+      ansible.builtin.meta: flush_handlers
+
+    - name: Reload nginx
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: reloaded
+      changed_when: false
+
     - name: Initial Certbot Run
       ansible.builtin.include_role:
         name: geerlingguy.certbot
