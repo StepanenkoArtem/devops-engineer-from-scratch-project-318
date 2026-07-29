@@ -5,6 +5,7 @@
     mode: "0755"
   loop:
     - "{{ grafana_datasources_path }}"
+    - "{{ grafana_dashboard_providers_path }}"
     - "{{ grafana_dashboards_path }}"
 
 - name: Copy datasource provisioning
@@ -16,10 +17,10 @@
     mode: "0644"
   notify: Restart grafana
 
-- name: Copy dashboard provisioning
-  ansible.builtin.copy:
-    src: dashboards/
-    dest: "{{ grafana_dashboards_path }}"
+- name: Copy dashboard providers provisioning
+  ansible.builtin.template:
+    src: dashboard_providers/default.yml.j2
+    dest: "{{ grafana_dashboard_providers_path }}/default.yml"
     owner: "root"
     group: "root"
     mode: "0644"
@@ -36,6 +37,7 @@
     image: "{{ grafana_image }}"
     volumes:
       - "{{ grafana_provisioning_path }}:{{ grafana_provisioning_path }}:ro"
+      - "{{ grafana_dashboards_path }}:{{ grafana_dashboards_path }}:ro"
       - "grafana-data:/var/lib/grafana"
     networks:
       - name: "{{ monitoring_network }}"
