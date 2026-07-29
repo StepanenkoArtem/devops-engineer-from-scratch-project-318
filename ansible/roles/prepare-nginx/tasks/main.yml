@@ -2,6 +2,7 @@
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 0
+  changed_when: false
 
 - name: Ensure /etc/nginx directory exists
   ansible.builtin.file:
