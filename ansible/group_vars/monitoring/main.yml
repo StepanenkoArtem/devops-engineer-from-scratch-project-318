@@ -4,3 +4,4 @@ non_root_user_name: "admin"
 public_keys_path: "public_keys/monitoring.pub"
 monitoring_network: monitoring
 prometheus_port: "9090"
+loki_port: "3100"

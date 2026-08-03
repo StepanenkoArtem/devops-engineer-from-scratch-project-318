@@ -10,11 +10,14 @@
 
 - name: Copy datasource provisioning
   ansible.builtin.template:
-    src: datasources/prometheus.yml.j2
-    dest: "{{ grafana_datasources_path }}/prometheus.yml"
+    src: "datasources/{{ item }}.j2"
+    dest: "{{ grafana_datasources_path }}/{{ item }}"
     owner: "root"
     group: "root"
     mode: "0644"
+  loop:
+    - prometheus.yml
+    - loki.yml
   notify: Restart grafana
 
 - name: Copy dashboard providers provisioning
