@@ -164,13 +164,35 @@ keeps resolving its datasource on any freshly built host.
 
 ### Dashboards
 
-| Dashboard      | UID            | Panels                                                               |
-| -------------- | -------------- | -------------------------------------------------------------------- |
-| `System Usage` | `system-usage` | CPU Usage, Memory Used, Disk usage by size, Disk usage by filesystem |
+| Dashboard       | UID             | Scope              | Panels                                                               |
+| --------------- | --------------- | ------------------ | -------------------------------------------------------------------- |
+| `System Usage`  | `system-usage`  | hosts (node)       | CPU Usage, Memory Used, Disk usage by size, Disk usage by filesystem |
+| `Bulletins App` | `bulletins-app` | the app (Actuator) | Application Uptime, JVM Heap, GC Time, RPS, HTTP Status codes        |
 
-All panels are driven by an `instance` template variable (`label_values(up{job=~"node"}, instance)`), so they work for
-any number of hosts without editing queries; each is a percentage panel with a fixed `0–100%` axis and an `80%`
-threshold.
+Neither dashboard hardcodes a target. `System Usage` is driven by an `instance` variable
+(`label_values(up{job=~"node"}, instance)`) and `Bulletins App` by a `job` variable — so both work for any number of
+hosts without editing queries.
+
+What each panel is for, where it is not obvious:
+
+| Panel                | Answers                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `Application Uptime` | is the target scrapeable at all — a state timeline, green `On` / red `Off`              |
+| `JVM Heap`           | memory-leak watch: after each GC the sawtooth should fall back to the **same** baseline |
+| `GC Time`            | `rate(jvm_gc_pause_seconds_sum)` = fraction of wall time spent in GC (≲1% healthy)      |
+| `RPS`                | total throughput, one line                                                              |
+| `HTTP Status codes`  | the response mix by code — this is where a single `500` becomes visible                 |
+
+Two things worth knowing when reading them:
+
+- `Application Uptime` shows `up`, which means "Prometheus could scrape this target", **not** "the app is healthy". A
+  JVM stuck in a GC death spiral still answers scrapes, so heap + GC panels are what cover that blind spot.
+- Saturation panels (host CPU/memory/disk, JVM heap) use a fixed `0–100%` axis with an `80%` threshold, so the same
+  value always looks the same and small wiggles cannot masquerade as spikes. `GC Time` deliberately keeps an auto axis:
+  its healthy range is fractions of a percent, which a fixed `0–100%` scale would flatten into a straight line.
+- `JVM Heap` divides by the **sum of heap pool maxima**, which the JVM sizes dynamically and which does **not** equal
+  `-Xmx` — hence the `(% of committed)` in its title. The denominator can move, so for alerting prefer absolute heap
+  bytes against a fixed `-Xmx`.
 
 ### Updating a dashboard
 
@@ -189,7 +211,17 @@ provisioning"**.
 
 ### Screenshots
 
-Key panels are captured in [`assets/`](assets/).
+![System Usage dashboard](assets/system-usage-dashboard.png)
+
+`System Usage` with `instance = All`, so every panel shows both hosts at once. The URL (`/d/system-usage/…`) and the
+"Managed by: File provisioning" badge are the two things worth checking after a deploy — together they prove the
+dashboard came from this repository and not from someone's browser session.
+
+![Bulletins App dashboard](assets/bulletins-app-dashboard.png)
+
+`Bulletins App`. The red `Off` band in `Application Uptime` is a deliberate test — the app host was powered off to
+confirm the whole chain reacts: the panel turns red, `up` goes to `0`, and the `InstanceDown` rule moves to `firing`. A
+dashboard that has never been seen failing has not been verified.
 
 ## Observability — metrics
 
