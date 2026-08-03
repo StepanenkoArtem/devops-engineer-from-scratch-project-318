@@ -4,13 +4,8 @@ password_auth_enabled: "no"
 root_login_enabled: "no"
 vpc_net: "10.114.0.0/20"
 
-application_port: 8080
 actuator_port: 9090
 public_ports:
   - "{{ ssh_port }}" # custom SSH port
   - "80"
   - "443"
-
-monitoring_ports:
-  - "{{ node_exporter_port }}"
-  - "{{ actuator_port }}"

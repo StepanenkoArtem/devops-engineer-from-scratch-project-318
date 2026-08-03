@@ -1,0 +1,3 @@
+- name: Restart prometheus
+  ansible.builtin.command: docker kill -s HUP prometheus
+  changed_when: true

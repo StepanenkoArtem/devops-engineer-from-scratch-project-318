@@ -17,7 +17,7 @@
     pull: true
     restart_policy: unless-stopped
     ports:
-      - "127.0.0.1:{{ application_port }}:{{ application_port }}"
+      - "127.0.0.1:{{ reverse_proxy_port }}:{{ reverse_proxy_port }}"
       - "{{ private_address }}:{{ actuator_port }}:{{ actuator_port }}"
     volumes:
       - "{{ deploy_log_path }}:/app/log"
@@ -35,7 +35,7 @@
       STORAGE_S3_SECRETKEY: "{{ vault_s3_secret_key }}"
 
       JAVA_OPTS: "-Xmx512m"
-  no_log: "{{ deploy_no_log | default(true) }}"
+  no_log: "{{ no_log | default(true) }}"
 
 - name: Application Health-check
   ansible.builtin.uri:
@@ -44,4 +44,4 @@
   until: deploy_result.status | default(0) == 200
   delay: 5
   retries: 24
-  no_log: "{{ deploy_no_log | default(true) }}"
+  no_log: "{{ no_log | default(true) }}"

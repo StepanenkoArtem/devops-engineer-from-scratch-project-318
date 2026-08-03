@@ -3,77 +3,80 @@
   become: true
 
   pre_tasks:
-    - name: Create prometheus config directory
-      ansible.builtin.file:
-        path: "{{ prometheus_config_directory }}"
-        state: directory
-        mode: "0755"
+    - name: Install docker
+      ansible.builtin.include_role:
+        name: geerlingguy.docker
 
-    - name: Create prometheus rules directory
-      ansible.builtin.file:
-        path: "{{ prometheus_config_directory }}/rules"
-        state: directory
-        owner: "root"
-        group: "root"
-        mode: "0755"
-
-    - name: Copy rules
-      ansible.builtin.copy:
-        src: prometheus/rules/
-        dest: "{{ prometheus_config_directory }}/rules/"
-        owner: "root"
-        group: "root"
-        mode: "0644"
-      notify: Restart prometheus
-
-  roles:
-    - geerlingguy.docker
-    - prometheus.prometheus.node_exporter
-
-  tasks:
-    - name: Copy Prometheus config
-      ansible.builtin.template:
-        src: prometheus/prometheus.yml.j2
-        dest: "{{ prometheus_config_directory }}/prometheus.yml"
-        owner: "root"
-        group: "root"
-        mode: "0644"
-        validate: >-
-          docker run --rm --user root
-          -v %s:/tmp/prometheus.yml:ro
-          --entrypoint promtool {{ prometheus_image }}
-          check config /tmp/prometheus.yml
-      notify: Restart prometheus
-
-    - name: Create a network
+    - name: Create a docker network
       community.docker.docker_network:
         name: "{{ monitoring_network }}"
 
-    - name: Create a Prometheus data volume
-      community.docker.docker_volume:
-        name: prometheus-data
-
-    - name: Create Prometheus container
-      community.docker.docker_container:
-        name: prometheus
-        state: started
-        image: "{{ prometheus_image }}"
-        volumes:
-          - "{{ prometheus_config_directory }}:{{ prometheus_config_directory }}:ro"
-          - "prometheus-data:/prometheus"
-        networks:
-          - name: "{{ monitoring_network }}"
-        ports:
-          - "127.0.0.1:9090:9090"
-        restart_policy: always
-    - name: Allow docker network to reach node_exporter
+    # TODO: consider to extract UFW to role
+    - name: Configure public ports
       community.general.ufw:
         rule: allow
-        port: "{{ node_exporter_port }}"
-        proto: tcp
-        from_ip: "172.16.0.0/12"
+        port: "{{ item }}"
+      loop: "{{ public_ports }}"
 
-  handlers:
-    - name: Restart prometheus
-      ansible.builtin.command: docker kill -s HUP prometheus
-      changed_when: true
+    - name: Configure private ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        src: "{{ vpc_net }}"
+      loop: "{{ monitoring_ports }}"
+
+    - name: Enable firewall
+      community.general.ufw:
+        state: enabled
+        default: deny
+
+    - name: Create ssl_certificate directory
+      ansible.builtin.file:
+        path: /var/www/letsencrypt
+        state: directory
+        mode: "0755"
+
+  roles:
+    - prepare-nginx
+    - prometheus.prometheus.node_exporter
+    - geerlingguy.nginx
+    - prometheus
+    - grafana
+
+  tasks:
+    - name: Run handlers before restarting nginx
+      ansible.builtin.meta: flush_handlers
+
+    - name: Reload nginx
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: reloaded
+      changed_when: false
+
+    - name: Initial Certbot Run
+      ansible.builtin.include_role:
+        name: geerlingguy.certbot
+
+    - name: Re-check nginx configuration
+      ansible.builtin.include_role:
+        name: prepare-nginx
+
+    - name: Re-Run nginx with TLS
+      ansible.builtin.include_role:
+        name: geerlingguy.nginx
+
+    - name: Run handlers after TLS certificate issuance
+      ansible.builtin.meta: flush_handlers
+
+    - name: Set renew cert hook
+      ansible.builtin.copy:
+        src: certbot/deploy_auto_renew.sh
+        dest: /etc/letsencrypt/renewal-hooks/deploy/
+        owner: "root"
+        mode: "0755"
+
+    - name: Turn off certbot.timer
+      ansible.builtin.systemd_service:
+        name: certbot.timer
+        enabled: false
+        state: stopped

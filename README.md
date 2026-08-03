@@ -6,23 +6,31 @@
 
 Two DigitalOcean droplets in a shared VPC:
 
-| Host         | Role                    | Public IP         | VPC (private) IP | User     |
-| ------------ | ----------------------- | ----------------- | ---------------- | -------- |
-| `hexlet-app` | application + nginx/TLS | `165.232.125.175` | `10.114.0.2`     | `devops` |
-| `monitoring` | Prometheus (+ stack)    | `165.227.174.50`  | `10.114.0.3`     | `admin`  |
+| Inventory host | Role                             | Public IP         | VPC (private) IP | SSH user |
+| -------------- | -------------------------------- | ----------------- | ---------------- | -------- |
+| `bulletins`    | application + nginx/TLS          | `165.232.125.175` | `10.114.0.2`     | `devops` |
+| `grafana`      | Prometheus + Grafana + nginx/TLS | `165.227.174.50`  | `10.114.0.3`     | `admin`  |
 
-All host-to-host traffic (metrics scraping) goes over the **private VPC network** — nothing about observability is
-exposed to the public internet. SSH is on a custom port, key-based, root login disabled (see bootstrap).
+Hosts are addressed in the inventory by **logical alias**, with the IP in `ansible_host` — so a rebuilt droplet only
+needs one line changed, and `host_vars/<alias>.yml` never has to be renamed.
 
-The application is served over HTTPS at **https://bulletins.artem.diy** (nginx + Let's Encrypt on `hexlet-app`).
+Metrics scraping goes over the **private VPC network** — no exporter is reachable from the public internet. SSH is on
+port `23332`, key-based, root login and password auth disabled (see bootstrap).
+
+Two public HTTPS endpoints, each nginx + Let's Encrypt on its own host:
+
+| URL                             | What                                     |
+| ------------------------------- | ---------------------------------------- |
+| **https://bulletins.artem.diy** | the application                          |
+| **https://grafana.artem.diy**   | Grafana UI (dashboards) — login required |
 
 ## Playbooks & Make targets
 
-| Playbook          | Runs on       | Make target                        | Purpose                                |
-| ----------------- | ------------- | ---------------------------------- | -------------------------------------- |
-| `droplets.yml`    | any droplet   | `make droplet HOST=<host>`         | one-shot bootstrap of a fresh droplet  |
-| `application.yml` | `application` | `make application IMAGE_TAG=sha-…` | deploy the app (nginx, TLS, container) |
-| `monitoring.yml`  | `monitoring`  | `make monitoring`                  | deploy Prometheus + node_exporter      |
+| Playbook          | Runs on       | Make target                        | Purpose                                 |
+| ----------------- | ------------- | ---------------------------------- | --------------------------------------- |
+| `droplets.yml`    | any droplet   | `make droplet HOST=<host>`         | one-shot bootstrap of a fresh droplet   |
+| `application.yml` | `application` | `make application IMAGE_TAG=sha-…` | deploy the app (nginx, TLS, container)  |
+| `monitoring.yml`  | `monitoring`  | `make monitoring`                  | deploy Prometheus + Grafana (nginx/TLS) |
 
 Install dependencies (Ansible roles + collections + Python deps) once:
 
@@ -65,11 +73,11 @@ locally.
 
 - own Docker network `monitoring` (for the future stack — Grafana/Alertmanager);
 - **config** as a host bind-mount `/etc/prometheus/prometheus.yml` (rendered from
-  `templates/prometheus/prometheus.yml.j2` and **validated with `promtool`** before it is applied — a bad config never
-  reaches the running server);
+  `roles/prometheus/templates/prometheus.yml.j2` and **validated with `promtool`** before it is applied — a bad config
+  never reaches the running server);
 - **data** as a named volume `prometheus-data` → `/prometheus` (survives container recreation);
-- published on **`127.0.0.1:9090` only** — Prometheus is internal. It is not exposed publicly; the public-facing UI will
-  be Grafana later. On config change the container is reloaded via `SIGHUP`.
+- published on **`127.0.0.1:9090` only** — Prometheus is internal and stays that way; the public-facing UI is
+  **Grafana** (see below). On config change the container is reloaded via `SIGHUP`.
 
 ### Scrape targets
 
@@ -105,9 +113,115 @@ curl -s 'http://localhost:9090/api/v1/query?query=count(up==1)' | jq -r '.data.r
 
 ### Alert rules
 
-Alerting rules live in `ansible/files/prometheus/rules/alerts.yml`, copied to `/etc/prometheus/rules/` and loaded via
-`rule_files` in the Prometheus config. Currently one rule — `InstanceDown` (`up == 0` for `1m`, `severity: critical`),
-visible under `/alerts`. Rules only **evaluate** here; actual notification delivery (Alertmanager) is a later step.
+Alerting rules live in `ansible/roles/prometheus/files/rules/alerts.yml`, copied to `/etc/prometheus/rules/` and loaded
+via `rule_files` in the Prometheus config. Currently one rule — `InstanceDown` (`up == 0` for `1m`,
+`severity: critical`), visible under `/alerts`. Rules only **evaluate** here; actual notification delivery
+(Alertmanager) is a later step.
+
+## Monitoring — Grafana
+
+`ansible/monitoring.yml` also deploys Grafana on the `monitoring` droplet, in the same Docker network as Prometheus.
+
+### Access
+
+**https://grafana.artem.diy** — nginx terminates TLS (Let's Encrypt) and reverse-proxies to Grafana, which is published
+on **`127.0.0.1:3000` only**. Grafana is never exposed directly.
+
+| Field    | Value                                                                   |
+| -------- | ----------------------------------------------------------------------- |
+| URL      | https://grafana.artem.diy                                               |
+| User     | `admin` (`grafana_admin_user` in `host_vars/grafana.yml`)               |
+| Password | `grafana_admin_password` — **encrypted in Ansible Vault**, never in git |
+
+Read the password locally (the vault password file path is already set in `ansible.cfg`):
+
+```sh
+ansible-vault view ansible/group_vars/monitoring/vault.yml
+```
+
+The password is passed to the container as `GF_SECURITY_ADMIN_PASSWORD`. Note it only takes effect on the **first**
+start, when Grafana creates the admin account — afterwards the source of truth is Grafana's own database in the
+`grafana-data` volume. To rotate it: `docker exec grafana grafana cli admin reset-admin-password '<new>'`, or remove the
+`grafana-data` volume so the first-start path runs again.
+
+Two more container settings exist because Grafana sits behind a proxy: `GF_SERVER_ROOT_URL` (so redirects and links use
+the public HTTPS address instead of `localhost:3000`) and `GF_SECURITY_CSRF_TRUSTED_ORIGINS`.
+
+### Provisioning (config as code)
+
+Nothing is configured by hand in the UI — everything arrives from this repository and is mounted **read-only**:
+
+| What                  | Source in repo                                               | Path on host                             |
+| --------------------- | ------------------------------------------------------------ | ---------------------------------------- |
+| Prometheus datasource | `roles/grafana/templates/datasources/prometheus.yml.j2`      | `/etc/grafana/provisioning/datasources/` |
+| Dashboard provider    | `roles/grafana/templates/dashboard_providers/default.yml.j2` | `/etc/grafana/provisioning/dashboards/`  |
+| Dashboard JSON        | `roles/grafana/files/dashboards/*.json`                      | `/etc/grafana/dashboards/`               |
+
+Only Grafana's mutable state (its database, plugins) lives in the named volume `grafana-data` → `/var/lib/grafana`.
+
+The datasource is pinned to a **stable `uid: prometheus`**, not an auto-generated one — so dashboard JSON committed here
+keeps resolving its datasource on any freshly built host.
+
+### Dashboards
+
+| Dashboard       | UID             | Scope              | Panels                                                               |
+| --------------- | --------------- | ------------------ | -------------------------------------------------------------------- |
+| `System Usage`  | `system-usage`  | hosts (node)       | CPU Usage, Memory Used, Disk usage by size, Disk usage by filesystem |
+| `Bulletins App` | `bulletins-app` | the app (Actuator) | Application Uptime, JVM Heap, GC Time, RPS, HTTP Status codes        |
+
+Neither dashboard hardcodes a target. `System Usage` is driven by an `instance` variable
+(`label_values(up{job=~"node"}, instance)`) and `Bulletins App` by a `job` variable — so both work for any number of
+hosts without editing queries.
+
+What each panel is for, where it is not obvious:
+
+| Panel                | Answers                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `Application Uptime` | is the target scrapeable at all — a state timeline, green `On` / red `Off`              |
+| `JVM Heap`           | memory-leak watch: after each GC the sawtooth should fall back to the **same** baseline |
+| `GC Time`            | `rate(jvm_gc_pause_seconds_sum)` = fraction of wall time spent in GC (≲1% healthy)      |
+| `RPS`                | total throughput, one line                                                              |
+| `HTTP Status codes`  | the response mix by code — this is where a single `500` becomes visible                 |
+
+Two things worth knowing when reading them:
+
+- `Application Uptime` shows `up`, which means "Prometheus could scrape this target", **not** "the app is healthy". A
+  JVM stuck in a GC death spiral still answers scrapes, so heap + GC panels are what cover that blind spot.
+- Saturation panels (host CPU/memory/disk, JVM heap) use a fixed `0–100%` axis with an `80%` threshold, so the same
+  value always looks the same and small wiggles cannot masquerade as spikes. `GC Time` deliberately keeps an auto axis:
+  its healthy range is fractions of a percent, which a fixed `0–100%` scale would flatten into a straight line.
+- `JVM Heap` divides by the **sum of heap pool maxima**, which the JVM sizes dynamically and which does **not** equal
+  `-Xmx` — hence the `(% of committed)` in its title. The denominator can move, so for alerting prefer absolute heap
+  bytes against a fixed `-Xmx`.
+
+### Updating a dashboard
+
+Provisioned dashboards are **read-only in the UI** (`allowUiUpdates: false`), which is deliberate: the file in git is
+the source of truth, so a UI edit can never be silently reverted by the next deploy. The loop is:
+
+1. Draft/adjust the dashboard in the UI (as a **new**, non-provisioned copy).
+2. **Export → Advanced options → Model: `Classic`**, with _Export for sharing externally_ **off**.
+3. In the JSON set `"id": null` and a stable `"uid"`.
+4. Save it as `ansible/roles/grafana/files/dashboards/<name>.json` and commit.
+5. `make monitoring` — the provider re-reads its directory every 10s, so no container restart is needed.
+6. Delete the temporary UI copy, so only the provisioned one remains.
+
+Verify it came from the repo: the dashboard URL is `/d/<uid>/…` and its info tooltip reads **"Managed by: File
+provisioning"**.
+
+### Screenshots
+
+![System Usage dashboard](assets/system-usage-dashboard.png)
+
+`System Usage` with `instance = All`, so every panel shows both hosts at once. The URL (`/d/system-usage/…`) and the
+"Managed by: File provisioning" badge are the two things worth checking after a deploy — together they prove the
+dashboard came from this repository and not from someone's browser session.
+
+![Bulletins App dashboard](assets/bulletins-app-dashboard.png)
+
+`Bulletins App`. The red `Off` band in `Application Uptime` is a deliberate test — the app host was powered off to
+confirm the whole chain reacts: the panel turns red, `up` goes to `0`, and the `InstanceDown` rule moves to `firing`. A
+dashboard that has never been seen failing has not been verified.
 
 ## Observability — metrics
 
@@ -150,11 +264,13 @@ All application metrics carry `application` and `environment` labels (from `mana
 
 Variables live at the altitude where their value is constant:
 
-- **Per-host** — `ansible/inventory.ini`, inline on each host: `private_address` (the host's VPC IP, used to build
-  scrape targets and reach exporters).
+- **Per-host** — `ansible/host_vars/<alias>.yml`: `private_address` (the host's VPC IP, used to build scrape targets and
+  reach exporters), `domain` (its public hostname — consumed by nginx, certbot and `grafana_root_url` alike),
+  `reverse_proxy_port` (the upstream nginx proxies to: `8080` for the app, `3000` for Grafana), and `monitoring_ports`
+  (which ports UFW opens to the VPC). Only the IP lives in the inventory, as `ansible_host`.
 - **Per-group** — `role` (`group_vars/application` → `application`, `group_vars/monitoring` → `monitoring`; becomes the
-  `role` label on `node` metrics), plus app-only (`nginx.yml`, `certbot.yml`, `domain_name`, DB settings) and
-  monitoring-only (connection key/user, `monitoring_network`, `prometheus_config_directory`).
+  `role` label on `node` metrics), plus per-service nginx vhosts and certbot config (`<group>/nginx.yml`,
+  `<group>/certbot.yml`), app-only DB settings, and monitoring-only `monitoring_network` / `prometheus_port`.
 - **Shared (both hosts)** — `group_vars/droplets/`: bootstrap (`ssh_port`, `non_root_user_name`, auth toggles),
   `vpc_net` (VPC CIDR for firewall rules), ports (`actuator_port`, `node_exporter_port`, `public_ports`,
   `monitoring_ports`), `docker.yml`, the `accept-new` SSH arg, and secrets in `vault.yml` (Ansible Vault).

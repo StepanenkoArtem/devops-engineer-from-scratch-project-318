@@ -1,0 +1,9 @@
+apiVersion: 1
+
+prune: true
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    url: "http://prometheus:{{ prometheus_port }}"
+    uid: "prometheus"

@@ -1,0 +1,61 @@
+- name: Create prometheus config directory
+  ansible.builtin.file:
+    path: "{{ prometheus_config_directory }}"
+    state: directory
+    mode: "0755"
+
+- name: Create prometheus rules directory
+  ansible.builtin.file:
+    path: "{{ prometheus_config_directory }}/rules"
+    state: directory
+    owner: "root"
+    group: "root"
+    mode: "0755"
+
+- name: Copy rules
+  ansible.builtin.copy:
+    src: rules/
+    dest: "{{ prometheus_config_directory }}/rules/"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart prometheus
+
+- name: Copy Prometheus config
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ prometheus_config_directory }}/prometheus.yml"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    validate: >-
+      docker run --rm --user root
+      -v %s:/tmp/prometheus.yml:ro
+      --entrypoint promtool {{ prometheus_image }}
+      check config /tmp/prometheus.yml
+  notify: Restart prometheus
+
+- name: Create a Prometheus data volume
+  community.docker.docker_volume:
+    name: prometheus-data
+
+- name: Create Prometheus container
+  community.docker.docker_container:
+    name: prometheus
+    state: started
+    image: "{{ prometheus_image }}"
+    volumes:
+      - "{{ prometheus_config_directory }}:{{ prometheus_config_directory }}:ro"
+      - "prometheus-data:/prometheus"
+    networks:
+      - name: "{{ monitoring_network }}"
+    ports:
+      - "127.0.0.1:9090:9090"
+    restart_policy: always
+
+- name: Allow docker network to reach node_exporter
+  community.general.ufw:
+    rule: allow
+    port: "{{ node_exporter_port }}"
+    proto: tcp
+    from_ip: "172.16.0.0/12"
