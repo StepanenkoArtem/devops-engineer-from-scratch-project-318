@@ -26,6 +26,15 @@
     mode: "0644"
   notify: Restart grafana
 
+- name: Copy provisioning
+  ansible.builtin.copy:
+    src: dashboards/
+    dest: "{{ grafana_dashboards_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart grafana
+
 - name: Create Grafana data volume
   community.docker.docker_volume:
     name: grafana-data
