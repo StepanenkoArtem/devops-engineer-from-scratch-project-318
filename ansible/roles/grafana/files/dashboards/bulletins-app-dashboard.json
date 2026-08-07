@@ -216,9 +216,9 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by(instance) (jvm_memory_used_bytes{job=~\"$job\", area=\"heap\"})/sum by(instance) (jvm_memory_max_bytes{job=~\"$job\", area=\"heap\" })",
+          "expr": "sum by(node) (jvm_memory_used_bytes{job=~\"$job\", area=\"heap\"})/sum by(node) (jvm_memory_max_bytes{job=~\"$job\", area=\"heap\" })",
           "instant": false,
-          "legendFormat": "{{instance}}",
+          "legendFormat": "{{node}}",
           "range": true,
           "refId": "A"
         }
@@ -267,7 +267,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "line"
             }
           },
           "thresholds": {
@@ -279,7 +279,7 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.05
               }
             ]
           },
@@ -358,7 +358,7 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineStyle": {
               "fill": "solid"
             },
@@ -386,7 +386,8 @@
                 "value": 0
               }
             ]
-          }
+          },
+          "unit": "reqps"
         }
       },
       "gridPos": {
@@ -487,10 +488,6 @@
               {
                 "color": "green",
                 "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -596,7 +593,7 @@
   },
   "timezone": "browser",
   "title": "Bulletins App",
-  "version": 22,
+  "version": 5,
   "uid": "bulletins-app",
-  "id": null
+  "id": null 
 }
