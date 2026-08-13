@@ -1,0 +1,638 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "Critical",
+      "folder": "Node health",
+      "interval": "30s",
+      "rules": [
+        {
+          "uid": "efudrawnpea68f",
+          "title": "Instance Down",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "builder",
+                "expr": "up{node=~\"bulletins|grafana\"}",
+                "instant": true,
+                "intervalMs": 1000,
+                "legendFormat": "{{instance}}",
+                "maxDataPoints": 43200,
+                "range": false,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0
+                      ],
+                      "type": "eq"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "noDataState": "NoData",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "{{ $labels.node }} is down (job {{ $labels.job }})"
+          },
+          "labels": {
+            "Severity": "Critical"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "Telegram"
+          }
+        }
+      ]
+    },
+    {
+      "orgId": 1,
+      "name": "High",
+      "folder": "Node health",
+      "interval": "5m",
+      "rules": [
+        {
+          "uid": "afuhah8ydqu4ga",
+          "title": "CPU Usage (by node)",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 21600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "builder",
+                "expr": "avg by(node) (rate(node_cpu_seconds_total{job=~\"node\", mode!=\"idle\", node=~\"grafana|bulletins\"}[5m]))",
+                "format": "time_series",
+                "instant": false,
+                "interval": "",
+                "intervalMs": 15000,
+                "legendFormat": "{{node}}",
+                "maxDataPoints": 43200,
+                "range": true,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": []
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "type": "reduce"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0.8
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "dashboardUid": "system-usage",
+          "panelId": 5,
+          "noDataState": "NoData",
+          "execErrState": "Error",
+          "for": "10m",
+          "annotations": {
+            "__dashboardUid__": "system-usage",
+            "__panelId__": "5",
+            "runbook_url": "https://grafana.artem.diy/d/system-usage/system-usage?orgId=1&from=now-6h&to=now&timezone=browser&var-node=grafana&refresh=30s",
+            "summary": "CPU on usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}"
+          },
+          "labels": {
+            "Severity": "High"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "Telegram"
+          }
+        },
+        {
+          "uid": "afuhhe4om9mgwf",
+          "title": "Disk usage by size",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 21600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "exemplar": false,
+                "expr": "1 - (sum by (node) (node_filesystem_avail_bytes{node=~\"grafana|bulletins\",fstype=~\"ext4|vfat\"}) / sum by (node) (node_filesystem_size_bytes{node=~\"grafana|bulletins\",fstype=~\"ext4|vfat\"}))",
+                "instant": false,
+                "interval": "",
+                "intervalMs": 15000,
+                "legendFormat": "{{node}}",
+                "maxDataPoints": 43200,
+                "range": true,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": []
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "type": "reduce"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0.8
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "dashboardUid": "system-usage",
+          "panelId": 3,
+          "noDataState": "NoData",
+          "execErrState": "Error",
+          "for": "5m",
+          "annotations": {
+            "__dashboardUid__": "system-usage",
+            "__panelId__": "3",
+            "summary": "Disk usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}"
+          },
+          "labels": {
+            "Severity": "High"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "Telegram"
+          }
+        },
+        {
+          "uid": "cfv20lh0mno5cd",
+          "title": "Memory Used",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 21600,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "exemplar": false,
+                "expr": "1 - (node_memory_MemAvailable_bytes{node=~\"bulletins|grafana\"} / node_memory_MemTotal_bytes{node=~\"bulletins|grafana\"})",
+                "instant": false,
+                "interval": "",
+                "intervalMs": 15000,
+                "legendFormat": "{{node}}",
+                "maxDataPoints": 43200,
+                "range": true,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": []
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "type": "reduce"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0.8
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "dashboardUid": "system-usage",
+          "panelId": 2,
+          "noDataState": "NoData",
+          "execErrState": "Error",
+          "for": "10m",
+          "keepFiringFor": "1m",
+          "annotations": {
+            "__dashboardUid__": "system-usage",
+            "__panelId__": "2",
+            "summary": "Memory usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}"
+          },
+          "labels": {
+            "Severity": "High"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "Telegram"
+          }
+        }
+      ]
+    },
+    {
+      "orgId": 1,
+      "name": "Critical",
+      "folder": "Application Health",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "ffv25fpwbk1kwc",
+          "title": "5xx Errors Rate",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": {
+                "from": 10800,
+                "to": 0
+              },
+              "datasourceUid": "prometheus",
+              "model": {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "(\n    sum by(job) (rate(http_server_requests_seconds_count{job=\"application\", status=~\"5..\"}[1m]))\n    /\n    sum by(job) (rate(http_server_requests_seconds_count{job=\"application\"}[1m]))\n  )\n",
+                "instant": false,
+                "interval": "",
+                "intervalMs": 15000,
+                "legendFormat": "5xx Errors rate",
+                "maxDataPoints": 43200,
+                "range": true,
+                "refId": "A"
+              }
+            },
+            {
+              "refId": "B",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": []
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "A",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "reducer": "last",
+                "refId": "B",
+                "type": "reduce"
+              }
+            },
+            {
+              "refId": "C",
+              "queryType": "expression",
+              "relativeTimeRange": {
+                "from": 0,
+                "to": 0
+              },
+              "datasourceUid": "__expr__",
+              "model": {
+                "conditions": [
+                  {
+                    "evaluator": {
+                      "params": [
+                        0.03
+                      ],
+                      "type": "gt"
+                    },
+                    "operator": {
+                      "type": "and"
+                    },
+                    "query": {
+                      "params": [
+                        "C"
+                      ]
+                    },
+                    "reducer": {
+                      "params": [],
+                      "type": "last"
+                    },
+                    "type": "query"
+                  }
+                ],
+                "datasource": {
+                  "type": "__expr__",
+                  "uid": "__expr__"
+                },
+                "expression": "B",
+                "intervalMs": 1000,
+                "maxDataPoints": 43200,
+                "refId": "C",
+                "type": "threshold"
+              }
+            }
+          ],
+          "dashboardUid": "bulletins-app",
+          "panelId": 6,
+          "noDataState": "NoData",
+          "execErrState": "Error",
+          "for": "1m",
+          "annotations": {
+            "__dashboardUid__": "bulletins-app",
+            "__panelId__": "6",
+            "summary": "Too many 5xx errors at {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}"
+          },
+          "labels": {
+            "Severity": "Critical"
+          },
+          "isPaused": false,
+          "notification_settings": {
+            "receiver": "Telegram"
+          }
+        }
+      ]
+    }
+  ]
+}

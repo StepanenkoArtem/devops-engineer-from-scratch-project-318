@@ -13,7 +13,7 @@ scrape_configs:
       - targets: [ "{{ hostvars[host].private_address }}:{{ node_exporter_port }}" ]
         labels: {
           role: "{{ hostvars[host].role }}",
-          node: "{{ [host] }}"
+          node: "{{ host }}"
         }
 {% endfor %}
 

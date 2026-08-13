@@ -329,7 +329,7 @@
               },
               {
                 "color": "red",
-                "value": 0.8
+                "value": 80
               }
             ]
           },
@@ -566,7 +566,7 @@
               },
               {
                 "color": "red",
-                "value": 0.8
+                "value": 80
               }
             ]
           },
@@ -679,5 +679,5 @@
   "title": "System Usage",
   "version": 11,
   "uid": "system-usage",
-  "id": null 
+  "id": null
 }
