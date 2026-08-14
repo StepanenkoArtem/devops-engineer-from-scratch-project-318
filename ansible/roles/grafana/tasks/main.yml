@@ -40,6 +40,12 @@
   notify: Restart grafana
   no_log: "{{ no_log | default(true) }}"
 
+# TODO: the two `copy` tasks below sweep a whole directory, and `copy` never prunes.
+# A file deleted from `files/dashboards/` or `files/alerting/` stays on the server and
+# keeps being loaded by Grafana — it just disappears from git, which is the worst
+# combination. Happened once with a leftover draft (`critical_temp.yaml`).
+# Fix either way: an explicit file list (as in the datasources task above), or a task
+# that removes destination files not present in the source.
 - name: Copy provisioned dashboards
   ansible.builtin.copy:
     src: dashboards/

@@ -20,11 +20,11 @@ templates:
         Service: {{ . }}
         {{- end }}
         Since: {{ .StartsAt | tz "Europe/Prague" | date "02.01 15:04:05 MST" }} ({{ .StartsAt.Format "15:04:05 UTC" }})
+        {{- if eq .Status "resolved" }}
+        Until: {{ .EndsAt | tz "Europe/Prague" | date "15:04:05 MST" }} ({{ .EndsAt.Format "15:04:05 UTC" }})
+        {{- end }}
         {{- if or .DashboardURL .SilenceURL }}
         {{ with .DashboardURL }}<a href="{{ . }}">dashboard</a>{{ end }}{{ if and .DashboardURL .SilenceURL }} · {{ end }}{{ with .SilenceURL }}<a href="{{ . }}">silence</a>{{ end }}
-        {{- if eq .Status "resolved" }}
-        Until: {{ .EndsAt | tz "Europe/Prague" | date "15:04:05 MST" }}
-        {{- end }}
         {{- end }}
         {{ end -}}
         {{ end }}
