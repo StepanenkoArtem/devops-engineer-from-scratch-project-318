@@ -1,0 +1,30 @@
+apiVersion: 1
+
+templates:
+    - orgId: 1
+      name: telegram.message
+      template: |
+        {{ define "telegram.message" }}
+        {{- range .Alerts }}
+        {{ if eq .Status "resolved" }}✅ RESOLVED{{ else }}🚨 FIRING{{ end }} · <b>{{ .Labels.alertname }}</b>
+        {{- with .Annotations.summary }}
+        {{ . }}
+        {{- end }}
+        {{- with .Labels.node }}
+        Host: <code>{{ . }}</code>
+        {{- end }}
+        {{- with .Labels.Severity }}
+        Severity: {{ . }}
+        {{- end }}
+        {{- with .Labels.service }}
+        Service: {{ . }}
+        {{- end }}
+        Since: {{ .StartsAt | tz "Europe/Prague" | date "02.01 15:04:05 MST" }} ({{ .StartsAt.Format "15:04:05 UTC" }})
+        {{- if eq .Status "resolved" }}
+        Until: {{ .EndsAt | tz "Europe/Prague" | date "15:04:05 MST" }} ({{ .EndsAt.Format "15:04:05 UTC" }})
+        {{- end }}
+        {{- if or .DashboardURL .SilenceURL }}
+        {{ with .DashboardURL }}<a href="{{ . }}">dashboard</a>{{ end }}{{ if and .DashboardURL .SilenceURL }} · {{ end }}{{ with .SilenceURL }}<a href="{{ . }}">silence</a>{{ end }}
+        {{- end }}
+        {{ end -}}
+        {{ end }}

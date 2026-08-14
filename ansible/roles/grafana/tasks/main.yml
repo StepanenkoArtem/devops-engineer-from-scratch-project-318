@@ -7,6 +7,7 @@
     - "{{ grafana_datasources_path }}"
     - "{{ grafana_dashboard_providers_path }}"
     - "{{ grafana_dashboards_path }}"
+    - "{{ grafana_alerting_path }}"
 
 - name: Copy datasource provisioning
   ansible.builtin.template:
@@ -29,13 +30,40 @@
     mode: "0644"
   notify: Restart grafana
 
-- name: Copy provisioning
+- name: Copy contact points provisioning
+  ansible.builtin.template:
+    src: alerting/contact_points.yaml.j2
+    dest: "{{ grafana_alerting_path }}/contact_points.yaml"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart grafana
+  no_log: "{{ no_log | default(true) }}"
+
+# TODO: the two `copy` tasks below sweep a whole directory, and `copy` never prunes.
+# A file deleted from `files/dashboards/` or `files/alerting/` stays on the server and
+# keeps being loaded by Grafana — it just disappears from git, which is the worst
+# combination. Happened once with a leftover draft (`critical_temp.yaml`).
+# Fix either way: an explicit file list (as in the datasources task above), or a task
+# that removes destination files not present in the source.
+- name: Copy provisioned dashboards
   ansible.builtin.copy:
     src: dashboards/
     dest: "{{ grafana_dashboards_path }}"
     owner: "root"
     group: "root"
     mode: "0644"
+    directory_mode: "0755"
+  notify: Restart grafana
+
+- name: Copy provisioned alerting
+  ansible.builtin.copy:
+    src: alerting/
+    dest: "{{ grafana_alerting_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    directory_mode: "0755"
   notify: Restart grafana
 
 - name: Create Grafana data volume

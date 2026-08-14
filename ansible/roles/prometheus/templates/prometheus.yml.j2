@@ -11,7 +11,10 @@ scrape_configs:
     static_configs:
 {% for host in groups['droplets'] %}
       - targets: [ "{{ hostvars[host].private_address }}:{{ node_exporter_port }}" ]
-        labels: { role: "{{ hostvars[host].role }}" }
+        labels: {
+          role: "{{ hostvars[host].role }}",
+          node: "{{ host }}"
+        }
 {% endfor %}
 
 
@@ -21,8 +24,8 @@ scrape_configs:
     static_configs:
 {% for application in groups['application'] %}
       - targets: ["{{ hostvars[application].private_address }}:{{ actuator_port }}"]
+        labels: {
+          role: "{{ hostvars[application].role }}",
+          node: "{{ hostvars[application].inventory_hostname }}"
+        }
 {% endfor %}
-
-rule_files:
-    - /etc/prometheus/rules/*.yml
-

@@ -216,9 +216,9 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum by(instance) (jvm_memory_used_bytes{job=~\"$job\", area=\"heap\"})/sum by(instance) (jvm_memory_max_bytes{job=~\"$job\", area=\"heap\" })",
+          "expr": "sum by(node) (jvm_memory_used_bytes{job=~\"$job\", area=\"heap\"})/sum by(node) (jvm_memory_max_bytes{job=~\"$job\", area=\"heap\" })",
           "instant": false,
-          "legendFormat": "{{instance}}",
+          "legendFormat": "{{node}}",
           "range": true,
           "refId": "A"
         }
@@ -267,7 +267,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "line"
             }
           },
           "thresholds": {
@@ -279,7 +279,7 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.05
               }
             ]
           },
@@ -358,7 +358,7 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "linear",
+            "lineInterpolation": "smooth",
             "lineStyle": {
               "fill": "solid"
             },
@@ -386,7 +386,8 @@
                 "value": 0
               }
             ]
-          }
+          },
+          "unit": "reqps"
         }
       },
       "gridPos": {
@@ -453,19 +454,19 @@
             "barAlignment": 1,
             "barWidthFactor": 0.9,
             "drawStyle": "line",
-            "fillOpacity": 67,
-            "gradientMode": "opacity",
+            "fillOpacity": 0,
+            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "lineStyle": {
               "fill": "solid"
             },
-            "lineWidth": 2,
+            "lineWidth": 1,
             "pointSize": 1,
             "scaleDistribution": {
               "type": "linear"
@@ -487,10 +488,6 @@
               {
                 "color": "green",
                 "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -539,6 +536,114 @@
       ],
       "title": "HTTP Status codes",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd",
+            "seriesBy": "min"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "series",
+            "axisGridShow": true,
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "barWidthFactor": 0.8,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 8,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 0.03
+              }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 18
+      },
+      "id": 6,
+      "options": {
+        "annotations": {
+          "clustering": -1,
+          "multiLane": false
+        },
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "enableFacetedFilter": false,
+          "overflow": "ellipsis",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "13.1.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": " (\n    sum(rate(http_server_requests_seconds_count{job=\"application\", status=~\"5..\"}[1m]))\n    /\n    sum(rate(http_server_requests_seconds_count{job=\"application\"}[1m]))\n  )\n",
+          "instant": false,
+          "legendFormat": "5xx Errors rate",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "5xx Errors Rate",
+      "type": "timeseries"
     }
   ],
   "preload": false,
@@ -577,7 +682,7 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
@@ -596,7 +701,7 @@
   },
   "timezone": "browser",
   "title": "Bulletins App",
-  "version": 22,
+  "version": 7,
   "uid": "bulletins-app",
-  "id": null
+  "id": null 
 }
