@@ -7,6 +7,7 @@
     - "{{ grafana_datasources_path }}"
     - "{{ grafana_dashboard_providers_path }}"
     - "{{ grafana_dashboards_path }}"
+    - "{{ grafana_alerting_path }}"
 
 - name: Copy datasource provisioning
   ansible.builtin.template:
@@ -29,13 +30,34 @@
     mode: "0644"
   notify: Restart grafana
 
-- name: Copy provisioning
+- name: Copy contact points provisioning
+  ansible.builtin.template:
+    src: alerting/contact_points.yaml.j2
+    dest: "{{ grafana_alerting_path }}/contact_points.yaml"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart grafana
+  no_log: "{{ no_log | default(true) }}"
+
+- name: Copy provisioned dashboards
   ansible.builtin.copy:
     src: dashboards/
     dest: "{{ grafana_dashboards_path }}"
     owner: "root"
     group: "root"
     mode: "0644"
+    directory_mode: "0755"
+  notify: Restart grafana
+
+- name: Copy provisioned alerting
+  ansible.builtin.copy:
+    src: alerting/
+    dest: "{{ grafana_alerting_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    directory_mode: "0755"
   notify: Restart grafana
 
 - name: Create Grafana data volume
