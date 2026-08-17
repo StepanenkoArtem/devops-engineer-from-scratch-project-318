@@ -4,3 +4,4 @@ reverse_proxy_port: 8080
 monitoring_ports:
   - "{{ node_exporter_port }}"
   - "{{ actuator_port }}"
+  - "{{ nginx_exporter_port }}"

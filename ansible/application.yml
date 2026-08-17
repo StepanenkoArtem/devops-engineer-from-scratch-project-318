@@ -39,6 +39,7 @@
     - prepare-nginx
     - prometheus.prometheus.node_exporter
     - geerlingguy.nginx
+    - nginx-exporter
 
   tasks:
     - name: Run handlers after roles to reload nginx

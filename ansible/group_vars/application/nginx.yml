@@ -1,5 +1,6 @@
 nginx_remove_default_vhost: true
 nginx_status_port: 8081
+nginx_status_path: "/status"
 nginx_listen_ipv6: false
 
 csp_policy: >-
@@ -40,7 +41,7 @@ nginx_vhost_http:
     filename: "{{ nginx_status_port }}-{{ domain }}.conf"
     access_log: "off"
     extra_parameters: |
-      location = /status {
+      location = {{ nginx_status_path }} {
         stub_status;
         allow 127.0.0.1;
         deny all;
