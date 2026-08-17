@@ -70,6 +70,19 @@
   community.docker.docker_volume:
     name: grafana-data
 
+# TODO: no memory limit, and the droplet is undersized. Grafana sits at ~605 MB of the
+# host's 961 MiB with no swap, so the global OOM killer took it five times between
+# 2026-08-08 and 2026-08-15 (`journalctl -k`). `restart_policy` hid the first four; the
+# fifth left the container at `Up` with `PIDS 0`, and nginx served 502 for two days.
+# Needs: a bigger host, an explicit `memory` limit, and a failure check from off-host —
+# alert rules inside Grafana cannot report Grafana's own death. Nothing on this droplet
+# can either: a cron job or a second container dies with the host. So the off-host check
+# has to be a dead man's switch (the Prometheus `Watchdog` pattern): an always-firing
+# alert pinged out to an external heartbeat service, which alerts when the pings stop.
+# That covers the whole chain at once — Grafana, Prometheus, the host, and the Telegram
+# delivery path. Note also that `HEALTHCHECK` alone would not have helped: it flips the
+# container to `unhealthy`, but `restart_policy` does not act on that.
+# Deferred: out of scope for the current course step.
 - name: Create Grafana container
   community.docker.docker_container:
     name: grafana
