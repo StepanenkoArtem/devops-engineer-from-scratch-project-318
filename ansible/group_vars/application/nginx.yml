@@ -1,4 +1,7 @@
 nginx_remove_default_vhost: true
+nginx_status_port: 8081
+nginx_listen_ipv6: false
+
 csp_policy: >-
   default-src 'self';
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -30,6 +33,17 @@ nginx_vhost_http:
       }
       location / {
         return 301 https://$host$request_uri;
+      }
+
+  - listen: "127.0.0.1:{{ nginx_status_port }}"
+    server_name: "{{ domain }}"
+    filename: "{{ nginx_status_port }}-{{ domain }}.conf"
+    access_log: "off"
+    extra_parameters: |
+      location = /status {
+        stub_status;
+        allow 127.0.0.1;
+        deny all;
       }
 
 nginx_vhost_https:
