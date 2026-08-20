@@ -1,4 +1,8 @@
 nginx_remove_default_vhost: true
+nginx_status_port: 8081
+nginx_status_path: "/status"
+nginx_listen_ipv6: false
+
 csp_policy: >-
   default-src 'self';
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -32,6 +36,17 @@ nginx_vhost_http:
         return 301 https://$host$request_uri;
       }
 
+  - listen: "127.0.0.1:{{ nginx_status_port }}"
+    server_name: "{{ domain }}"
+    filename: "{{ nginx_status_port }}-{{ domain }}.conf"
+    access_log: "off"
+    extra_parameters: |
+      location = {{ nginx_status_path }} {
+        stub_status;
+        allow 127.0.0.1;
+        deny all;
+      }
+
 nginx_vhost_https:
   - listen: "443 ssl"
     ssl_protocols: "TLSv1.2 TLSv1.3"
@@ -56,10 +71,10 @@ nginx_vhost_https:
       proxy_set_header X-Forwarded-Proto $scheme;
 
       location / {
-        proxy_pass http://localhost:{{ reverse_proxy_port }};
+        proxy_pass http://127.0.0.1:{{ reverse_proxy_port }};
       }
 
       location ~* \.(css|js|png|jpg|jpeg|webp|svg|ico|woff2)$ {
-        proxy_pass http://localhost:{{ reverse_proxy_port }};
+        proxy_pass http://127.0.0.1:{{ reverse_proxy_port }};
         expires 1d;
       }

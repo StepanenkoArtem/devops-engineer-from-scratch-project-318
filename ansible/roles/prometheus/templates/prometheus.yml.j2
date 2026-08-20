@@ -29,3 +29,14 @@ scrape_configs:
           node: "{{ hostvars[application].inventory_hostname }}"
         }
 {% endfor %}
+
+  - job_name: 'nginx'
+
+    static_configs:
+{% for application in groups['application'] %}
+      - targets: ["{{ hostvars[application].private_address }}:{{ hostvars[application].nginx_exporter_port }}"]
+        labels: {
+          role: "{{ hostvars[application].role }}",
+          node: "{{ hostvars[application].inventory_hostname }}"
+        }
+{% endfor %}

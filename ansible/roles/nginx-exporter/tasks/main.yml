@@ -1,0 +1,47 @@
+- name: Create system user
+  ansible.builtin.user:
+    system: true
+    name: "{{ nginx_exporter_user }}"
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Prepare directory to download package
+  ansible.builtin.file:
+    path: "{{ nginx_exporter_download_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download NGINX Prometheus exporter package
+  ansible.builtin.get_url:
+    url: "{{ nginx_exporter_download_url }}"
+    dest: "{{ nginx_exporter_download_dir }}"
+    checksum: "{{ nginx_exporter_checksum_url }}"
+    mode: "0640"
+
+- name: Unpack Nginx Prometheus exporter
+  ansible.builtin.unarchive:
+    src: "{{ nginx_exporter_download_path }}"
+    dest: "{{ nginx_exporter_installation_dir }}"
+    remote_src: true
+    mode: "0755"
+    include:
+      - "{{ nginx_exporter_binary }}"
+  notify: Restart Nginx exporter
+
+- name: Configure as systemd
+  ansible.builtin.template:
+    src: "{{ nginx_exporter_systemd_unit_template }}"
+    dest: "{{ nginx_exporter_systemd_unit_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart Nginx exporter
+
+- name: Start Nginx exporter
+  ansible.builtin.systemd_service:
+    enabled: true
+    state: started
+    daemon_reload: true
+    name: "{{ nginx_exporter_systemd_unit_name }}"

@@ -1,0 +1,20 @@
+[Unit]
+Description=NGINX Prometheus exporter
+After=network-online.target
+After=nginx.service
+Wants=network-online.target
+
+[Service]
+User={{ nginx_exporter_user }}
+# Group name is equal to user name
+Group={{ nginx_exporter_user }}
+Type=simple
+WorkingDirectory={{ nginx_exporter_installation_dir }}
+ExecStart={{ nginx_exporter_binary_path }} \
+  --nginx.scrape-uri=http://127.0.0.1:{{ nginx_status_port }}{{ nginx_status_path }} \
+  --web.listen-address={{ private_address}}:{{ nginx_exporter_port }}
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

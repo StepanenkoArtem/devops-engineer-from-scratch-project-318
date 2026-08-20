@@ -1,0 +1,23 @@
+# Repository info
+nginx_exporter_repository: "https://github.com/nginx/nginx-prometheus-exporter/releases/download"
+nginx_exporter_release_version: "1.5.3"
+nginx_exporter_package: "nginx-prometheus-exporter_{{ nginx_exporter_release_version }}_linux_amd64.tar.gz"
+nginx_exporter_checksum_file: "nginx-prometheus-exporter_{{ nginx_exporter_release_version }}_checksums.txt"
+nginx_exporter_download_url: "{{ nginx_exporter_repository }}/v{{ nginx_exporter_release_version }}/{{ nginx_exporter_package }}"
+nginx_exporter_checksum_url: "sha256:{{ nginx_exporter_repository }}/v{{ nginx_exporter_release_version }}/{{ nginx_exporter_checksum_file }}"
+
+# Download
+nginx_exporter_download_dir: "/etc/nginx-prometheus-exporter"
+nginx_exporter_download_path: "{{ nginx_exporter_download_dir }}/{{ nginx_exporter_package }}"
+
+# Installation
+nginx_exporter_installation_dir: "/usr/local/bin"
+nginx_exporter_binary_path: "{{ nginx_exporter_installation_dir }}/{{ nginx_exporter_binary }}"
+
+# Systemd unit
+nginx_exporter_systemd_unit_template: "nginx_exporter.service.j2"
+nginx_exporter_systemd_unit_name: "nginx_exporter"
+nginx_exporter_systemd_unit_path: "/etc/systemd/system/{{ nginx_exporter_systemd_unit_name }}.service"
+
+# User
+nginx_exporter_user: "nginx_exporter"
