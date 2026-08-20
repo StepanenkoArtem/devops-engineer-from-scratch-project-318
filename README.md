@@ -63,7 +63,8 @@ Deploy a specific image. The play **requires** `image_tag` — an immutable `sha
 make application IMAGE_TAG=sha-<commit>
 ```
 
-It sets up nginx + a Let's Encrypt TLS certificate and deploys the app container. The vault password file path is set in
+It sets up nginx + a Let's Encrypt TLS certificate, installs node_exporter and the nginx exporter, and deploys the app
+container. The vault password file path is set in
 `ansible.cfg` (`vault_password_file`), so no `--vault-password-file` flag is needed — just make sure that file exists
 locally.
 
@@ -90,8 +91,9 @@ automatically adds it as a `node` target — no manual edit of the Prometheus co
 | `node`        | `10.114.0.2:9100` | `role=application`, `node=bulletins` | `/metrics`             | node_exporter on the app host        |
 |               | `10.114.0.3:9100` | `role=monitoring`, `node=grafana`    | `/metrics`             | node_exporter on the monitoring host |
 | `application` | `10.114.0.2:9090` | `role=application`, `node=bulletins` | `/actuator/prometheus` | Spring Boot Actuator over VPC        |
+| `nginx`       | `10.114.0.2:9113` | `role=application`, `node=bulletins` | `/metrics`             | nginx-prometheus-exporter over VPC   |
 
-Both jobs get the **same** label set on purpose. An asymmetric set is a silent trap: a dashboard variable built from one
+All three jobs get the **same** label set on purpose. An asymmetric set is a silent trap: a dashboard variable built from one
 job's labels would quietly return nothing for panels querying the other, with no error to notice. Keeping `role` and
 `node` on every job also means metrics from the app and from the host under it share a joinable label — `instance`
 cannot serve that role, since it includes the port and therefore differs per exporter.
@@ -112,7 +114,7 @@ Verify every target is healthy (`up == 1`) — via the tunnel, or directly on th
 curl -s 'http://localhost:9090/api/v1/query?query=up' \
   | jq -r '.data.result[] | "\(.metric.job)\t\(.metric.instance)\tup=\(.value[1])"'
 
-# count of healthy targets (expect 3)
+# count of healthy targets (expect 4)
 curl -s 'http://localhost:9090/api/v1/query?query=count(up==1)' | jq -r '.data.result[0].value[1]'
 ```
 
@@ -189,11 +191,17 @@ keeps resolving its datasource on any freshly built host.
 | Dashboard       | UID             | Scope              | Panels                                                                                              |
 | --------------- | --------------- | ------------------ | --------------------------------------------------------------------------------------------------- |
 | `System Usage`  | `system-usage`  | hosts (node)       | CPU Usage (by mode), CPU Usage (by node), Memory Used, Disk usage by size, Disk usage by filesystem |
-| `Bulletins App` | `bulletins-app` | the app (Actuator) | Application Uptime, JVM Heap, GC Time, RPS, HTTP Status codes, 5xx Errors Rate                      |
+| `Bulletins App` | `bulletins-app` | the app (Actuator) + nginx | **Bulletins App** row: Application Uptime, JVM Heap, GC Time, RPS, HTTP Status codes, 5xx Errors Rate · **Nginx** row: Up-times, RPS, Nginx Connection Types |
 
-Neither dashboard hardcodes a target. `System Usage` is driven by a **`node`** variable (`label_values(up, node)`) and
-`Bulletins App` by a `job` variable — so both work for any number of hosts without editing queries. Queries always match
-with `=~` rather than `=`, so switching the variable between single- and multi-value never breaks them.
+`System Usage` is driven by a **`node`** variable (`label_values(up, node)`), so it works for any number of hosts
+without editing queries; its selectors use `=~` rather than `=`, which keeps them valid when the variable switches
+between single- and multi-value.
+
+`Bulletins App` used to have a `job` variable too. It was **removed** when the `Nginx` row was added: the nginx panels
+query `job="nginx"`, so a single `job` selector would have driven only half the dashboard — a control that visibly does
+nothing for the other half is worse than no control. The panels now pin their job explicitly, which is a positive
+matcher and therefore fails loudly (`No data`) if a job is ever renamed. A negative matcher such as `up{job!="node"}`
+would keep drawing something after a rename, and would silently absorb every job added later.
 
 The `node` label is added by the Ansible-rendered scrape config, not by Prometheus. It exists because `instance`
 identifies an **exporter**, not a machine: `node_exporter` and the app's Actuator on the same host have different
@@ -211,6 +219,9 @@ What each panel is for, where it is not obvious:
 | `RPS`                 | total throughput, one line                                                              |
 | `HTTP Status codes`   | the response mix by code — this is where a single `500` becomes visible                 |
 | `5xx Errors Rate`     | 5xx as a **share** of all requests — the number the alert rule thresholds on            |
+| `Up-times` (nginx)    | two rows — `nginx_up` and `up{job="nginx"}` — so a failure says _which_ link broke       |
+| `RPS` (nginx)         | throughput as the reverse proxy sees it, including requests the app never got            |
+| `Nginx Connection Types` | connections split into reading / writing / waiting, stacked; `active` on top as a line |
 
 The two CPU panels answer different questions and cannot be one panel: stacking is only meaningful when the series are
 parts of one whole, and CPU modes of _two_ machines are not. `CPU Usage (by mode)` therefore repeats itself per node
@@ -423,7 +434,8 @@ ssh -p 23332 devops@165.232.125.175 'sudo systemctl start node_exporter'
 
 ```sh
 # (b) wide: power the app droplet off from the DigitalOcean panel.
-#     Both of its targets die, so the message contains TWO alert blocks.
+#     All THREE of its targets die (node, application, nginx), so the message carries three alert
+#     blocks grouped into a single Telegram notification.
 #     Realistic, but it takes https://bulletins.artem.diy down with it.
 ```
 
@@ -513,10 +525,14 @@ This one came from variant **(b)**: the app droplet was powered off, so both of 
 second. That is why one message carries **two** blocks — two alert instances of the same rule, batched by
 `group_by: [grafana_folder, alertname]`. Variant (a) produces a single block; both are correct.
 
-It also shows the cost of `Instance Down` spanning two jobs: the application target is reported with `Service: platform`
-and lands in the `Node health` folder, because a static label cannot know which target failed. Splitting it into two
-rules (`up{job="node"}` and `up{job="application"}`) would give each the right service, folder and its own message — a
-reasonable next change.
+It also shows the cost of `Instance Down` spanning every job: the application and nginx targets are reported with
+`Service: platform` and land in the `Node health` folder, because a static label cannot know which target failed.
+Splitting it per job (`up{job="node"}`, `up{job="application"}`, `up{job="nginx"}`) would give each the right service,
+folder and its own message — a reasonable next change.
+
+The flip side is why the rule was left generic in the first place: it queries bare `up`, so adding the `nginx` job
+brought it under alerting with **no** change to `rules.yaml`. A rule pinned to specific jobs would need editing for
+every new exporter, and sooner or later one would be forgotten.
 
 ## Observability — metrics
 
@@ -530,6 +546,8 @@ Two metric sources are collected:
 - **Application metrics** — Spring Boot Actuator exposes `/actuator/prometheus` on management port `9090`, published by
   the container on the app host's **private** address `10.114.0.2:9090` (VPC only, not public). nginx access logs are
   emitted as JSON (`nginx_log_format` with `escape=json`) for downstream processing.
+- **Reverse-proxy metrics** — `nginx-prometheus-exporter` (own role `nginx-exporter`, systemd unit `nginx_exporter`) on
+  the app host, reading nginx's `stub_status` over loopback and publishing `/metrics` on `10.114.0.2:9113` (VPC only).
 
 ### Mandatory host metrics (node_exporter)
 
@@ -555,6 +573,79 @@ Two metric sources are collected:
 
 All application metrics carry `application` and `environment` labels (from `management.metrics.tags`).
 
+### Nginx metrics (nginx-prometheus-exporter)
+
+nginx has no Prometheus endpoint of its own — the `stub_status` module answers with seven plain-text numbers. The
+exporter is the adapter: it reads that page over loopback and republishes it in Prometheus format.
+
+That makes **two** endpoints with two different trust boundaries, and they must not be confused:
+
+| Endpoint            | Listens on                | Who reaches it           | Guarded by                                        |
+| ------------------- | ------------------------- | ------------------------ | ------------------------------------------------- |
+| `stub_status`       | `127.0.0.1:8081/status`   | the exporter, same host  | loopback bind **and** `allow 127.0.0.1; deny all` |
+| exporter `/metrics` | `10.114.0.2:9113/metrics` | Prometheus, over the VPC | UFW — `monitoring_ports`, on a default-deny host   |
+
+Loopback and `allow`/`deny` are not redundant: the bind means the packet never arrives, the `location` guard means nginx
+refuses it even if someone later widens `listen`. `access_log off` on that vhost keeps a scrape every 15s (~5.7k lines a
+day) out of the logs.
+
+The exporter runs as a **systemd unit**, not a container. nginx is a host process under systemd, so a Docker layer would
+add a failure domain that can die on its own — a hung `dockerd` would cost visibility into a perfectly healthy nginx,
+and `nginx_up` would stop reporting the very thing it exists to report. `Restart=on-failure` provides the auto-restart,
+`After=nginx.service` orders the start, and the unit runs as the unprivileged `nginx_exporter` user. The version is
+pinned in `roles/nginx-exporter/defaults/main.yml`, and the release archive is checked against upstream's
+`checksums.txt` — bumping the version changes the download path, so the new binary really does replace the old one.
+
+| Area             | Metric                                                | Meaning                                         |
+| ---------------- | ----------------------------------------------------- | ----------------------------------------------- |
+| Availability     | `nginx_up`                                            | `1` = the exporter reached `stub_status`         |
+| Throughput       | `nginx_http_requests_total`                           | counter; `rate()` of it is RPS                  |
+| Connections      | `nginx_connections_active`                            | current total = reading + writing + waiting     |
+| Connection state | `nginx_connections_reading` / `_writing` / `_waiting` | who is sending, who is being served, who idles  |
+| Capacity         | `nginx_connections_accepted` / `_handled`             | equal when healthy; a gap = dropped connections |
+
+`accepted` minus `handled` is the most valuable pair here: a dropped connection never becomes a request, so it appears
+in **no** access log — `worker_connections` or file-descriptor exhaustion is visible only through these two counters.
+
+Two things are deliberately **absent**: per-status-code counts and request latency. `stub_status` does not expose them
+(NGINX Plus does, through its own API) — a limit of the OSS build, not of this configuration. Codes and latency come
+from the application metrics above.
+
+#### Verification
+
+Check one hop at a time; each command fails differently, which is what makes the chain diagnosable.
+
+```sh
+# 1. nginx -> stub_status. Loopback only, so this must run on the app host.
+ssh -i ~/.ssh/hexlet-admin -p 23332 devops@165.232.125.175 'curl -s http://127.0.0.1:8081/status'
+# Active connections: 1
+# server accepts handled requests
+#  5772 5772 7158
+# Reading: 0 Writing: 1 Waiting: 0
+
+# 2. exporter -> /metrics. VPC only; run it from the monitoring host to also prove the firewall rule.
+ssh -i ~/.ssh/monitoring -p 23332 admin@165.227.174.50 \
+  'curl -s http://10.114.0.2:9113/metrics | grep -E "^nginx_(up|http_requests_total|connections_active)"'
+# nginx_up 1
+
+# 3. Prometheus -> both link states (on the monitoring host, or through the tunnel above)
+curl -s 'http://localhost:9090/api/v1/query?query=up{job="nginx"}' | jq -r '.data.result[0].value[1]'   # 1
+curl -s 'http://localhost:9090/api/v1/query?query=nginx_up'        | jq -r '.data.result[0].value[1]'   # 1
+```
+
+`up{job="nginx"}` and `nginx_up` look redundant and are not. `up` is written by Prometheus and answers "can I reach the
+exporter"; `nginx_up` is written by the exporter and answers "can I reach nginx". `up=0` points at the network or the
+firewall; `up=1, nginx_up=0` points at `stub_status`, the scrape URI or the `allow` list. If the exporter shared nginx's
+lifecycle — an `After=`/`Requires=` mistake, or the same container — this distinction would collapse into a single
+useless signal.
+
+Dashboard: **https://grafana.artem.diy/d/bulletins-app** -> the **Nginx** row (`Up-times`, `RPS`,
+`Nginx Connection Types`).
+
+One thing to keep in mind when reading it: the monitoring is part of what it measures. Every scrape is itself a request
+nginx serves, so `Writing` sits at `1` and RPS has a floor of 4 requests/min (one scrape per 15s) even with zero real
+traffic. Thresholds for any future nginx alert have to be counted from that floor, not from zero.
+
 ## Configuration variables
 
 Variables live at the altitude where their value is constant:
@@ -565,7 +656,9 @@ Variables live at the altitude where their value is constant:
   (which ports UFW opens to the VPC). Only the IP lives in the inventory, as `ansible_host`.
 - **Per-group** — `role` (`group_vars/application` → `application`, `group_vars/monitoring` → `monitoring`; becomes the
   `role` label on `node` metrics), plus per-service nginx vhosts and certbot config (`<group>/nginx.yml`,
-  `<group>/certbot.yml`), app-only DB settings, and monitoring-only `monitoring_network` / `prometheus_port`.
+  `<group>/certbot.yml`), app-only DB settings, `nginx_status_port` / `nginx_status_path` and
+  `nginx_exporter_port` for the application group (both nginx endpoints exist only on that host), and monitoring-only
+  `monitoring_network` / `prometheus_port`.
 - **Shared (both hosts)** — `group_vars/droplets/`: bootstrap (`ssh_port`, `non_root_user_name`, auth toggles),
   `vpc_net` (VPC CIDR for firewall rules), ports (`actuator_port`, `node_exporter_port`, `public_ports`,
   `monitoring_ports`), `docker.yml`, the `accept-new` SSH arg, and secrets in `vault.yml` (Ansible Vault).
