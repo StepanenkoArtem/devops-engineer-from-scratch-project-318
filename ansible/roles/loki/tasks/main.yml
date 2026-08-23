@@ -1,0 +1,34 @@
+- name: Create Loki config directory
+  ansible.builtin.file:
+    path: "{{ loki_config_directory }}"
+    state: directory
+    mode: "0755"
+
+- name: Copy Loki config
+  ansible.builtin.template:
+    src: loki.yml.j2
+    dest: "{{ loki_config_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart Loki
+
+- name: Create Loki data volume
+  community.docker.docker_volume:
+    name: loki-data
+
+- name: Create Loki container
+  community.docker.docker_container:
+    name: loki
+    state: started
+    image: "{{ loki_image }}"
+    volumes:
+      - "{{ loki_config_directory }}:{{ loki_config_directory }}:ro"
+      - "loki-data:{{ loki_data_mnt }}"
+    networks:
+      - name: "{{ monitoring_network }}"
+    ports:
+      - "{{ private_address }}:{{ loki_port }}:{{ loki_port }}"
+    command: -config.file={{ loki_config_path }}
+    restart_policy: always
+

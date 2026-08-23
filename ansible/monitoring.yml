@@ -41,6 +41,7 @@
     - prometheus.prometheus.node_exporter
     - geerlingguy.nginx
     - prometheus
+    - loki
     - grafana
 
   tasks:
