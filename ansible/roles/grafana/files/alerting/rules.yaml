@@ -418,10 +418,12 @@ groups:
               editorMode: code
               expr: |
                 (
-                    sum by(job) (rate(http_server_requests_seconds_count{job="application", status=~"5.."}[1m]))
-                    /
-                    sum by(job) (rate(http_server_requests_seconds_count{job="application"}[1m]))
-                  )
+                (sum by(job) (rate(http_server_requests_seconds_count{job="application", status=~"5.."}[5m]))
+                or
+                sum by(job) (rate(http_server_requests_seconds_count{job="application"}[5m]) * 0))
+                 /
+                 sum by(job) (rate(http_server_requests_seconds_count{job="application"}[5m]))
+                 )
               instant: false
               interval: ""
               intervalMs: 15000
@@ -470,7 +472,7 @@ groups:
                     type: and
                   query:
                     params:
-                      - C
+                      - B
                   reducer:
                     params: []
                     type: last
