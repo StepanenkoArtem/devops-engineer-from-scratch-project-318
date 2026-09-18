@@ -28,6 +28,8 @@
       SPRING_DATASOURCE_USERNAME: "{{ vault_db_username }}"
       SPRING_DATASOURCE_PASSWORD: "{{ vault_db_password }}"
 
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: "{{ deploy_web_log_level }}"
+
       STORAGE_S3_BUCKET: "{{ deploy_s3_bucket }}"
       STORAGE_S3_REGION: "{{ deploy_s3_region }}"
       STORAGE_S3_ENDPOINT: "{{ deploy_s3_endpoint }}"

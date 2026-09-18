@@ -9,6 +9,8 @@ deploy_app_base_dir: "/opt/{{ deploy_app_name }}"
 deploy_tmp_path: "{{ deploy_app_base_dir }}/tmp"
 deploy_log_path: "{{ deploy_app_base_dir }}/log"
 
+deploy_web_log_level: "INFO" # DEBUG makes Spring log every HTTP request, scrapes included
+
 deploy_s3_bucket: "hexlet4-s3"
 deploy_s3_region: "fra1"
 deploy_s3_endpoint: "https://fra1.digitaloceanspaces.com"
