@@ -1,0 +1,19 @@
+[Unit]
+Description=Promtail log agent
+After=network-online.target
+After=nginx.service
+Wants=network-online.target
+
+[Service]
+User={{ promtail_user }}
+# Group name is equal to user name
+Group={{ promtail_user }}
+Type=simple
+WorkingDirectory={{ promtail_installation_dir }}
+ExecStart={{ promtail_binary_path }} \
+  -config.file={{ promtail_config_path }}
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

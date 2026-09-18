@@ -80,3 +80,8 @@
     - name: Deploy
       ansible.builtin.include_role:
         name: deploy
+
+    # After deploy: promtail needs the docker group and a running container to discover
+    - name: Ship logs to Loki
+      ansible.builtin.include_role:
+        name: promtail

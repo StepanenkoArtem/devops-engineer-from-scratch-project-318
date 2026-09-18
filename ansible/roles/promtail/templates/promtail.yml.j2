@@ -1,0 +1,96 @@
+server:
+  http_listen_address: {{ private_address }}
+  http_listen_port: {{ promtail_port }}
+  log_level: info
+
+positions:
+  filename: {{ promtail_positions_path }}
+
+clients:
+  - url: {{ promtail_loki_push_url }}
+
+scrape_configs:
+  # nginx writes access logs as JSON (nginx_log_format, escape=json)
+  - job_name: nginx-access
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx-access
+          node: {{ inventory_hostname }}
+          __path__: /var/log/nginx/access.log
+
+    pipeline_stages:
+      - json:
+          expressions:
+            status: status
+            time_local: time_local
+      - labels:
+          status:
+      # $time_local carries its own UTC offset, so no location is needed here
+      - timestamp:
+          source: time_local
+          format: 02/Jan/2006:15:04:05 -0700
+
+  # error.log is plain text; only the timestamp, the level and pid#tid are guaranteed
+  - job_name: nginx-error
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx-error
+          node: {{ inventory_hostname }}
+          __path__: /var/log/nginx/error.log
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<time>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?P<level>[a-z]+)\] \d+#\d+:'
+      - labels:
+          level:
+      # error.log prints no timezone; the droplet is assumed to run UTC
+      - timestamp:
+          source: time
+          format: 2006/01/02 15:04:05
+          location: UTC
+
+  # Read through the Docker API, not from files: no __path__ here
+  - job_name: application
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 10s
+        filters:
+          - name: name
+            values: ["{{ deploy_docker_container }}"]
+
+    # Runs per log line, not only on discovery: log_stream is set for every entry
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: log_stream
+      - target_label: job
+        replacement: application
+      - target_label: node
+        replacement: {{ inventory_hostname }}
+      - target_label: environment
+        replacement: prod
+
+    pipeline_stages:
+      # stdout carries the application's own JSON (logback JSON encoder)
+      - match:
+          selector: '{log_stream="stdout"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+            - labels:
+                level:
+
+      # stderr carries logback's own status lines and unstructured JVM output
+      - match:
+          selector: '{log_stream="stderr"}'
+          stages:
+            - regex:
+                expression: '\|-(?P<level>[A-Z]+) in '
+            # Go template, escaped so Jinja does not eat it: default for lines the regex missed
+            - template:
+                source: level
+                template: '{% raw %}{{ if .Value }}{{ .Value }}{{ else }}unknown{{ end }}{% endraw %}'
+            - labels:
+                level:

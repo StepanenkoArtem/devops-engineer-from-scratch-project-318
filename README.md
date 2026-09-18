@@ -64,9 +64,8 @@ make application IMAGE_TAG=sha-<commit>
 ```
 
 It sets up nginx + a Let's Encrypt TLS certificate, installs node_exporter and the nginx exporter, and deploys the app
-container. The vault password file path is set in
-`ansible.cfg` (`vault_password_file`), so no `--vault-password-file` flag is needed — just make sure that file exists
-locally.
+container. The vault password file path is set in `ansible.cfg` (`vault_password_file`), so no `--vault-password-file`
+flag is needed — just make sure that file exists locally.
 
 ## Monitoring — Prometheus
 
@@ -93,10 +92,10 @@ automatically adds it as a `node` target — no manual edit of the Prometheus co
 | `application` | `10.114.0.2:9090` | `role=application`, `node=bulletins` | `/actuator/prometheus` | Spring Boot Actuator over VPC        |
 | `nginx`       | `10.114.0.2:9113` | `role=application`, `node=bulletins` | `/metrics`             | nginx-prometheus-exporter over VPC   |
 
-All three jobs get the **same** label set on purpose. An asymmetric set is a silent trap: a dashboard variable built from one
-job's labels would quietly return nothing for panels querying the other, with no error to notice. Keeping `role` and
-`node` on every job also means metrics from the app and from the host under it share a joinable label — `instance`
-cannot serve that role, since it includes the port and therefore differs per exporter.
+All three jobs get the **same** label set on purpose. An asymmetric set is a silent trap: a dashboard variable built
+from one job's labels would quietly return nothing for panels querying the other, with no error to notice. Keeping
+`role` and `node` on every job also means metrics from the app and from the host under it share a joinable label —
+`instance` cannot serve that role, since it includes the port and therefore differs per exporter.
 
 ### Access & verification (`up == 1`)
 
@@ -188,9 +187,9 @@ keeps resolving its datasource on any freshly built host.
 
 ### Dashboards
 
-| Dashboard       | UID             | Scope              | Panels                                                                                              |
-| --------------- | --------------- | ------------------ | --------------------------------------------------------------------------------------------------- |
-| `System Usage`  | `system-usage`  | hosts (node)       | CPU Usage (by mode), CPU Usage (by node), Memory Used, Disk usage by size, Disk usage by filesystem |
+| Dashboard       | UID             | Scope                      | Panels                                                                                                                                                       |
+| --------------- | --------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `System Usage`  | `system-usage`  | hosts (node)               | CPU Usage (by mode), CPU Usage (by node), Memory Used, Disk usage by size, Disk usage by filesystem                                                          |
 | `Bulletins App` | `bulletins-app` | the app (Actuator) + nginx | **Bulletins App** row: Application Uptime, JVM Heap, GC Time, RPS, HTTP Status codes, 5xx Errors Rate · **Nginx** row: Up-times, RPS, Nginx Connection Types |
 
 `System Usage` is driven by a **`node`** variable (`label_values(up, node)`), so it works for any number of hosts
@@ -209,19 +208,19 @@ identifies an **exporter**, not a machine: `node_exporter` and the app's Actuato
 
 What each panel is for, where it is not obvious:
 
-| Panel                 | Answers                                                                                 |
-| --------------------- | --------------------------------------------------------------------------------------- |
-| `Application Uptime`  | is the target scrapeable at all — a state timeline, green `On` / red `Off`              |
-| `CPU Usage (by mode)` | _where_ the CPU goes (user/system/iowait/steal), stacked; one node at a time            |
-| `CPU Usage (by node)` | _which host_ is busier — one line per node, not stacked                                 |
-| `JVM Heap`            | memory-leak watch: after each GC the sawtooth should fall back to the **same** baseline |
-| `GC Time`             | `rate(jvm_gc_pause_seconds_sum)` = fraction of wall time spent in GC (≲1% healthy)      |
-| `RPS`                 | total throughput, one line                                                              |
-| `HTTP Status codes`   | the response mix by code — this is where a single `500` becomes visible                 |
-| `5xx Errors Rate`     | 5xx as a **share** of all requests — the number the alert rule thresholds on            |
-| `Up-times` (nginx)    | two rows — `nginx_up` and `up{job="nginx"}` — so a failure says _which_ link broke       |
-| `RPS` (nginx)         | throughput as the reverse proxy sees it, including requests the app never got            |
-| `Nginx Connection Types` | connections split into reading / writing / waiting, stacked; `active` on top as a line |
+| Panel                    | Answers                                                                                 |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| `Application Uptime`     | is the target scrapeable at all — a state timeline, green `On` / red `Off`              |
+| `CPU Usage (by mode)`    | _where_ the CPU goes (user/system/iowait/steal), stacked; one node at a time            |
+| `CPU Usage (by node)`    | _which host_ is busier — one line per node, not stacked                                 |
+| `JVM Heap`               | memory-leak watch: after each GC the sawtooth should fall back to the **same** baseline |
+| `GC Time`                | `rate(jvm_gc_pause_seconds_sum)` = fraction of wall time spent in GC (≲1% healthy)      |
+| `RPS`                    | total throughput, one line                                                              |
+| `HTTP Status codes`      | the response mix by code — this is where a single `500` becomes visible                 |
+| `5xx Errors Rate`        | 5xx as a **share** of all requests — the number the alert rule thresholds on            |
+| `Up-times` (nginx)       | two rows — `nginx_up` and `up{job="nginx"}` — so a failure says _which_ link broke      |
+| `RPS` (nginx)            | throughput as the reverse proxy sees it, including requests the app never got           |
+| `Nginx Connection Types` | connections split into reading / writing / waiting, stacked; `active` on top as a line  |
 
 The two CPU panels answer different questions and cannot be one panel: stacking is only meaningful when the series are
 parts of one whole, and CPU modes of _two_ machines are not. `CPU Usage (by mode)` therefore repeats itself per node
@@ -583,7 +582,7 @@ That makes **two** endpoints with two different trust boundaries, and they must 
 | Endpoint            | Listens on                | Who reaches it           | Guarded by                                        |
 | ------------------- | ------------------------- | ------------------------ | ------------------------------------------------- |
 | `stub_status`       | `127.0.0.1:8081/status`   | the exporter, same host  | loopback bind **and** `allow 127.0.0.1; deny all` |
-| exporter `/metrics` | `10.114.0.2:9113/metrics` | Prometheus, over the VPC | UFW — `monitoring_ports`, on a default-deny host   |
+| exporter `/metrics` | `10.114.0.2:9113/metrics` | Prometheus, over the VPC | UFW — `monitoring_ports`, on a default-deny host  |
 
 Loopback and `allow`/`deny` are not redundant: the bind means the packet never arrives, the `location` guard means nginx
 refuses it even if someone later widens `listen`. `access_log off` on that vhost keeps a scrape every 15s (~5.7k lines a
@@ -598,7 +597,7 @@ pinned in `roles/nginx-exporter/defaults/main.yml`, and the release archive is c
 
 | Area             | Metric                                                | Meaning                                         |
 | ---------------- | ----------------------------------------------------- | ----------------------------------------------- |
-| Availability     | `nginx_up`                                            | `1` = the exporter reached `stub_status`         |
+| Availability     | `nginx_up`                                            | `1` = the exporter reached `stub_status`        |
 | Throughput       | `nginx_http_requests_total`                           | counter; `rate()` of it is RPS                  |
 | Connections      | `nginx_connections_active`                            | current total = reading + writing + waiting     |
 | Connection state | `nginx_connections_reading` / `_writing` / `_waiting` | who is sending, who is being served, who idles  |
@@ -646,6 +645,27 @@ One thing to keep in mind when reading it: the monitoring is part of what it mea
 nginx serves, so `Writing` sits at `1` and RPS has a floor of 4 requests/min (one scrape per 15s) even with zero real
 traffic. Thresholds for any future nginx alert have to be counted from that floor, not from zero.
 
+## Observability — logs
+
+### Why Promtail, when the current practice is Alloy
+
+The log agent on the app host is **Promtail**, and that is a deliberate deviation from current practice.
+
+Promtail reached **end of life on 2026-03-02**: commercial support ended, its code was merged into **Grafana Alloy**,
+and all further development happens there. Upstream says it plainly — users still on Promtail are expected to migrate.
+
+It is used here because the course step this repository implements specifies Promtail by name, and matching the
+assignment was worth more than matching the ecosystem.
+
+The cost is concrete rather than theoretical. Promtail binaries stopped being published: **v3.6.11 is the last Loki
+release that ships `promtail-linux-amd64.zip`** — every release from 3.6.12 onward, including the whole 3.7.x line,
+carries no promtail asset at all. So the agent is pinned to `3.6.11` in `roles/promtail/defaults/main.yml` while the
+Loki server runs 3.7.x. The push API is stable across those versions, so the split works; what it does not do is receive
+another fix, ever.
+
+For anything outside this course the choice would be Alloy — same collection model, same Loki push endpoint, and it is
+also the agent that would later carry traces.
+
 ## Configuration variables
 
 Variables live at the altitude where their value is constant:
@@ -656,9 +676,9 @@ Variables live at the altitude where their value is constant:
   (which ports UFW opens to the VPC). Only the IP lives in the inventory, as `ansible_host`.
 - **Per-group** — `role` (`group_vars/application` → `application`, `group_vars/monitoring` → `monitoring`; becomes the
   `role` label on `node` metrics), plus per-service nginx vhosts and certbot config (`<group>/nginx.yml`,
-  `<group>/certbot.yml`), app-only DB settings, `nginx_status_port` / `nginx_status_path` and
-  `nginx_exporter_port` for the application group (both nginx endpoints exist only on that host), and monitoring-only
-  `monitoring_network` / `prometheus_port`.
+  `<group>/certbot.yml`), app-only DB settings, `nginx_status_port` / `nginx_status_path` and `nginx_exporter_port` for
+  the application group (both nginx endpoints exist only on that host), and monitoring-only `monitoring_network` /
+  `prometheus_port`.
 - **Shared (both hosts)** — `group_vars/droplets/`: bootstrap (`ssh_port`, `non_root_user_name`, auth toggles),
   `vpc_net` (VPC CIDR for firewall rules), ports (`actuator_port`, `node_exporter_port`, `public_ports`,
   `monitoring_ports`), `docker.yml`, the `accept-new` SSH arg, and secrets in `vault.yml` (Ansible Vault).

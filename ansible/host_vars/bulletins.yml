@@ -5,3 +5,4 @@ monitoring_ports:
   - "{{ node_exporter_port }}"
   - "{{ actuator_port }}"
   - "{{ nginx_exporter_port }}"
+  - "{{ promtail_port }}"
