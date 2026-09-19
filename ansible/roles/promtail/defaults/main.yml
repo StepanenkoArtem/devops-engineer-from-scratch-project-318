@@ -28,6 +28,8 @@ promtail_loki_host: "{{ hostvars[groups['monitoring'][0]].private_address }}"
 promtail_loki_port: "{{ hostvars[groups['monitoring'][0]].loki_port }}"
 promtail_loki_push_url: "http://{{ promtail_loki_host }}:{{ promtail_loki_port }}/loki/api/v1/push"
 
+promtail_environment: "prod"
+
 # Docker container whose logs are shipped as job=application
 promtail_docker_container: "{{ app_container_name }}"
 
