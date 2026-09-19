@@ -8,9 +8,19 @@ common:
   instance_addr: 127.0.0.1
   path_prefix: {{ loki_data_mnt }}
   storage:
-    filesystem:
-      chunks_directory: {{ loki_data_mnt }}/chunks
-      rules_directory: {{ loki_data_mnt }}/rules
+    s3:
+      bucketnames: {{ loki_s3_bucket }}
+      endpoint: {{ loki_s3_endpoint }}
+      region: {{ loki_s3_region }}
+      access_key_id: "${LOKI_S3_ACCESS_KEY_ID}"
+      secret_access_key: "${LOKI_S3_SECRET_ACCESS_KEY}"
+      insecure: false
+      http_config:
+        idle_conn_timeout: 90s
+        response_header_timeout: 0s
+        insecure_skip_verify: false
+      s3forcepathstyle: true
+
   replication_factor: 1
   ring:
     kvstore:
@@ -26,12 +36,13 @@ query_range:
 limits_config:
   metric_aggregation_enabled: true
   enable_multi_variant_queries: true
+  retention_period: {{ loki_retention_period }}
 
 schema_config:
   configs:
     - from: 2020-10-24
       store: tsdb
-      object_store: filesystem
+      object_store: aws
       schema: v13
       index:
         prefix: index_
@@ -46,4 +57,7 @@ pattern_ingester:
 frontend:
   encoding: protobuf
 
-
+compactor:
+  working_directory: {{ loki_data_mnt }}/compactor
+  retention_enabled: true
+  delete_request_store: aws

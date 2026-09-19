@@ -11,6 +11,12 @@
     owner: "root"
     group: "root"
     mode: "0644"
+    # Checks the rendered temp file (%s), not the live config; ${VAR} expand to empty here, which is fine for syntax
+    validate: >-
+      docker run --rm --user root
+      -v %s:/tmp/loki.yml:ro
+      {{ loki_image }}
+      -config.file=/tmp/loki.yml -config.expand-env=true -verify-config
   notify: Restart Loki
 
 - name: Create Loki data volume
@@ -29,6 +35,11 @@
       - name: "{{ monitoring_network }}"
     ports:
       - "{{ private_address }}:{{ loki_port }}:{{ loki_port }}"
-    command: -config.file={{ loki_config_path }}
+    # expand-env resolves ${VAR} in the config, so S3 keys never land in the file on disk
+    command: -config.file={{ loki_config_path }} -config.expand-env=true
+    env:
+      LOKI_S3_ACCESS_KEY_ID: "{{ loki_s3_access_key }}"
+      LOKI_S3_SECRET_ACCESS_KEY: "{{ loki_s3_secret_key }}"
     restart_policy: always
+  no_log: "{{ no_log | default(true) }}"
 
