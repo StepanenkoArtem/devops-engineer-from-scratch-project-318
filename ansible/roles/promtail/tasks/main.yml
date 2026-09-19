@@ -35,6 +35,8 @@
     mode: "0755"
     include:
       - "{{ promtail_binary }}"
+  # In --check the archive is never downloaded, so unpacking would fail and hide the diffs of later tasks
+  when: not ansible_check_mode
   notify: Restart Promtail
 
 - name: Create positions directory
