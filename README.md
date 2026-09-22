@@ -666,6 +666,139 @@ another fix, ever.
 For anything outside this course the choice would be Alloy — same collection model, same Loki push endpoint, and it is
 also the agent that would later carry traces.
 
+### The chain
+
+```
+/var/log/nginx/*.log ─┐
+                      ├─> Promtail (systemd, app host) ─push─> Loki (docker, monitoring) ─> Grafana
+docker logs bulletins ┘        :9080                    VPC        :3100                    Explore / dashboard
+                                                                     │
+                                                                     └─> chunks + index -> Spaces bucket hexlet4-logs
+```
+
+Promtail runs as a **systemd unit** (not a container) because it reads files owned by `root:adm` and talks to
+`/var/run/docker.sock`; the unit user is in both groups. Its HTTP port `9080` is bound to the **private** address and
+scraped by Prometheus like any other target, so `up{job="promtail"}` is what reports the agent dying. Loki listens on
+the VPC only — nothing about logs is reachable from the internet.
+
+Two collection modes are in play, and they behave differently:
+
+| Target                        | How it reads                                                     | Timestamp comes from                                  |
+| ----------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| `nginx-access`, `nginx-error` | tails files, position saved in `/var/lib/promtail/positions.yml` | the log line itself, via a `timestamp` pipeline stage |
+| `application`                 | Docker API (`docker_sd_configs`), filtered to the app container  | Docker, which stores a real timestamp per line        |
+
+The file targets are read **from the beginning** on first start, so the first deploy back-filled days of history:
+entries landed in Loki at their original times, not at collection time. That is the `timestamp` stage working. Two
+limits worth knowing: Loki rejects lines older than `reject_old_samples_max_age` (7d by default) and newer than
+`creation_grace_period` (10m) — a wrong timezone assumption therefore loses lines _silently_.
+
+### Streams and labels
+
+| Job            | Labels set here                      | Notes                                                                                                            |
+| -------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `nginx-access` | `job`, `node`, `status`              | nginx writes JSON (`nginx_log_format`, `escape=json`)                                                            |
+| `nginx-error`  | `job`, `node`, `level`               | plain text; level comes from a regex stage. nginx logs from `warn` up, so in practice only `warn`/`error` appear |
+| `application`  | `job`, `node`, `log_stream`, `level` | `log_stream` is `stdout` (logback JSON) or `stderr`                                                              |
+| all three      | `environment`                        | set once in `clients[].external_labels`, not per scrape config                                                   |
+
+Three more labels appear in Grafana that this repo never sets: `filename` (Promtail adds it to every file target),
+`service_name` and `detected_level` (Loki 3.x derives them at ingestion). They carry no new information here — one file
+per job, `detected_level` mirrors `level` — but they are worth recognising in a legend.
+
+`level="unknown"` on `application/stderr` is the interesting one: the regex only matches logback's own status lines, so
+everything else on stderr — a JVM crash, an OOM kill message — lands there. An alert written on `level="ERROR"` would
+not see any of it.
+
+Deliberate deviations from the assignment's wording: the host label is **`node`** (matching the metrics side, where
+`node` already means the host, so a dashboard variable works across both), and there is **no `app` label** — one
+application per host makes `job` sufficient. **Search by user is not implemented**: the app logs no user identifier, and
+`$remote_user` is only filled for HTTP basic auth, which this app does not use.
+
+### Storage, retention and secrets
+
+Loki keeps chunks and index in a **dedicated Space** (`hexlet4-logs`, fra1), not in the bucket the application uses for
+user uploads. DigitalOcean scopes Spaces keys per _bucket_, never per prefix, so a shared bucket would mean Loki's key
+could read and delete user files. Retention is **15 days**, the same as Prometheus' default — no reason yet to keep logs
+longer than metrics — and it is enforced by the **compactor**: without `compactor.retention_enabled`, `retention_period`
+is silently ignored.
+
+The S3 keys never reach the config file on disk. `loki.yml` references `${LOKI_S3_ACCESS_KEY_ID}` /
+`${LOKI_S3_SECRET_ACCESS_KEY}`, the container runs with `-config.expand-env=true`, and the values arrive as container
+`env` from `group_vars/monitoring/vault.yml` under `no_log`. The file itself stays secret-free and world-readable.
+
+The rendered config is checked with `loki -verify-config` (the `validate:` argument of the template task, same pattern
+as `promtool` for Prometheus) _before_ it replaces the live file — a broken config never reaches the server, and the
+handler never restarts Loki into a crash loop. Two config traps it caught or would catch:
+
+- the S3 block is named `s3:` under `common.storage` but `aws:` under `storage_config` — same fields, different key;
+- Loki parses YAML strictly, so an unknown key (a stale `sse_encryption`, say) aborts startup instead of being ignored.
+
+### Dashboard and saved queries
+
+The **Logs** row of `Bulletins App` (https://grafana.artem.diy/d/bulletins-app) holds three panels, all reading
+`nginx-access`:
+
+| Panel                     | Query                                                                                                                                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Upstream latency p95 (5m) | `quantile_over_time(0.95, {node="bulletins",job="nginx-access", environment="prod"} \| json \| upstream_response_time != "" \| unwrap upstream_response_time \| __error__="" [5m]) by (job)` |
+| Requests to app (5m)      | `sum by (node) (count_over_time({node="bulletins", job="nginx-access", environment="prod"} \| json \| upstream_response_time != "" [5m]))`                                                   |
+| 5xx responses (5m)        | `sum by (node) (count_over_time({environment="prod", job="nginx-access", status=~"5.."}[5m])) or vector(0)`                                                                                  |
+
+Latency is `$upstream_response_time` (what the app spent), not `$request_time` (which includes the client's network),
+and it deliberately counts failed requests too — a 500 that took a second is exactly what the panel should show.
+Requests without an upstream (the port-80 redirect, for instance) log an **empty** field, not `-`, because `escape=json`
+writes unset variables as `""`; they are filtered out before `unwrap`, and `__error__=""` after it catches anything else
+that is not a number. The request-count panel repeats that filter on purpose: it says how many samples each p95 point
+stands on, which matters when a 5-minute window holds two requests.
+
+`status` is a stream label, so the 5xx panel filters in the **selector** rather than after `| json` — Loki then skips
+those chunks entirely instead of reading and discarding them.
+
+### Alerting on 5xx from logs
+
+`5xx Errors Count` (folder `Application Health`) fires above **5 responses in 5 minutes**, `for: 1m`. It exists next to
+the metric-based `5xx Errors Rate` because the two go blind at different moments: Actuator stops reporting exactly when
+the app dies, and that is when nginx starts answering 502/504 on its own. The threshold is absolute, chosen for the
+current (tiny) traffic, and is meant to be raised as traffic grows.
+
+Both 5xx rules are `Severity: High`, not `Critical`: the app is answering, a bug in one endpoint is not worth waking
+someone at night. Telegram messages render 🚨 for `Critical` and ⚠️ for `High`.
+
+`or vector(0)` turns "no traffic" into a real zero, which also means this rule can never go `NoData` for a quiet hour.
+The flip side: a broken log pipeline would look like "no errors" here, so the thing that actually reports it is
+`up{job="promtail"}` via `Instance Down`.
+
+### Access & verification
+
+```bash
+# 1. agent alive and shipping (app host). "active (running)" alone is not enough:
+ssh -p 23332 devops@<app-ip> 'systemctl status promtail'
+ssh -p 23332 devops@<app-ip> 'sudo journalctl -u promtail --since "15 min ago" --no-pager | grep -iE "error|warn"'
+# expect: "Adding target" lines for both nginx files and one "added Docker target";
+#         no 400s, no "entry too far behind/ahead". sudo is required — devops is not in the adm group.
+
+# 2. Prometheus sees the agent
+#    in Grafana -> Explore -> Prometheus:  up{job="promtail"}   -> 1
+
+# 3. end to end: write a line and find it in Loki
+curl -s -o /dev/null -A "loki-e2e-probe" https://bulletins.artem.diy/
+#    then in Grafana -> Explore -> Loki:   {job="nginx-access"} |= "loki-e2e-probe"
+#    the marker travels in the user agent, so one request proves nginx -> Promtail -> Loki -> Grafana
+
+# 4. what Loki actually holds (cardinality per job, last 24h)
+#    count by (job) (count_over_time({job=~".+"}[24h]))
+#    expect ~8 nginx-access (one per status seen), 1-2 nginx-error, ~5 application
+
+# 5. objects really land in the bucket (DigitalOcean -> Spaces -> hexlet4-logs)
+#    index/            TSDB index + delete requests
+#    fake/             chunks. "fake" is the tenant id Loki uses when auth_enabled is false
+#    loki_cluster_seed.json
+```
+
+Chunks appear in the bucket with a delay: the ingester holds them in memory until they fill up or go idle, and flushes
+on shutdown. That is also why `loki-data` stays a volume even though storage is remote — the WAL lives there.
+
 ## Configuration variables
 
 Variables live at the altitude where their value is constant:
