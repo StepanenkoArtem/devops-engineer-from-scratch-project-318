@@ -42,7 +42,7 @@ schema_config:
   configs:
     - from: 2020-10-24
       store: tsdb
-      object_store: aws
+      object_store: s3
       schema: v13
       index:
         prefix: index_
@@ -60,4 +60,4 @@ frontend:
 compactor:
   working_directory: {{ loki_data_mnt }}/compactor
   retention_enabled: true
-  delete_request_store: aws
+  delete_request_store: s3
