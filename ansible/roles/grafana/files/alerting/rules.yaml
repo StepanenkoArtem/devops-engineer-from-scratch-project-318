@@ -517,7 +517,8 @@ groups:
                 uid: loki
               editorMode: code
               # nginx sees 502/504 even when the app is dead and Actuator reports nothing
-              expr: sum(count_over_time({environment="prod", job="nginx-access", status=~"5.."}[5m])) or vector(0)
+              # sum by (node): without it the aggregation drops every label and the summary has no host
+              expr: sum by (node) (count_over_time({environment="prod", job="nginx-access", status=~"5.."}[5m])) or vector(0)
               instant: false
               intervalMs: 15000
               maxDataPoints: 43200

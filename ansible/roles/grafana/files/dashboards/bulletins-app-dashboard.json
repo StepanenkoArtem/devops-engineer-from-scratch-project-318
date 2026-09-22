@@ -1268,7 +1268,7 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "sum(count_over_time({node=\"bulletins\", job=\"nginx-access\", environment=\"prod\"} | json | upstream_response_time != `` [5m]))",
+          "expr": "sum by (node) (count_over_time({node=\"bulletins\", job=\"nginx-access\", environment=\"prod\"} | json | upstream_response_time != \"\" [5m]))",
           "legendFormat": "requests",
           "queryType": "range",
           "refId": "A"
@@ -1371,7 +1371,7 @@
           },
           "direction": "backward",
           "editorMode": "code",
-          "expr": "sum(count_over_time({environment=\"prod\", job=\"nginx-access\", status=~\"5..\"}[5m])) or vector(0)",
+          "expr": "sum by (node) (count_over_time({environment=\"prod\", job=\"nginx-access\", status=~\"5..\"}[5m])) or vector(0)",
           "legendFormat": "5xx",
           "queryType": "range",
           "refId": "A"
