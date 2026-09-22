@@ -496,7 +496,86 @@ groups:
           __panelId__: "6"
           summary: "Too many 5xx errors at {{ $labels.job }}: {{ humanizePercentage $values.B.Value }}"
         labels:
-          Severity: Critical
+          Severity: High
+          service: bulletins
+        isPaused: false
+        notification_settings:
+          receiver: Telegram
+
+      - uid: bul5xxlogcount01
+        title: 5xx Errors Count
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: loki
+            model:
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              # nginx sees 502/504 even when the app is dead and Actuator reports nothing
+              expr: sum(count_over_time({environment="prod", job="nginx-access", status=~"5.."}[5m])) or vector(0)
+              instant: false
+              intervalMs: 15000
+              maxDataPoints: 43200
+              queryType: range
+              range: true
+              refId: A
+          - refId: B
+            queryType: expression
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            queryType: expression
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: bulletins-app
+        panelId: 16
+        # vector(0) already turns "no traffic" into 0, so NoData here means the log pipeline itself broke
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        keepFiringFor: 0s
+        annotations:
+          __dashboardUid__: bulletins-app
+          __panelId__: "16"
+          summary: "nginx returned {{ $values.B.Value }} 5xx responses in the last 5m on {{ $labels.node }}"
+        labels:
+          Severity: High
           service: bulletins
         isPaused: false
         notification_settings:
