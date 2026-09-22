@@ -6,7 +6,7 @@ templates:
       template: |
         {{ define "telegram.message" }}
         {{- range .Alerts }}
-        {{ if eq .Status "resolved" }}✅ RESOLVED{{ else }}🚨 FIRING{{ end }} · <b>{{ .Labels.alertname }}</b>
+        {{ if eq .Status "resolved" }}✅ RESOLVED{{ else }}{{ if eq .Labels.Severity "High" }}⚠️{{ else }}🚨{{ end }} FIRING{{ end }} · <b>{{ .Labels.alertname }}</b>
         {{- with .Annotations.summary }}
         {{ . }}
         {{- end }}

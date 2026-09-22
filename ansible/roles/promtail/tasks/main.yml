@@ -1,0 +1,73 @@
+- name: Create system user
+  ansible.builtin.user:
+    system: true
+    name: "{{ promtail_user }}"
+    shell: /usr/sbin/nologin
+    create_home: false
+    groups: "{{ promtail_extra_groups }}"
+    append: true
+
+- name: Ensure unzip is installed
+  ansible.builtin.package:
+    name: unzip
+    state: present
+
+- name: Prepare directory to download package
+  ansible.builtin.file:
+    path: "{{ promtail_download_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download Promtail package
+  ansible.builtin.get_url:
+    url: "{{ promtail_download_url }}"
+    dest: "{{ promtail_download_dir }}"
+    checksum: "{{ promtail_checksum_url }}"
+    mode: "0640"
+
+- name: Unpack Promtail
+  ansible.builtin.unarchive:
+    src: "{{ promtail_download_path }}"
+    dest: "{{ promtail_installation_dir }}"
+    remote_src: true
+    mode: "0755"
+    include:
+      - "{{ promtail_binary }}"
+  # In --check the archive is never downloaded, so unpacking would fail and hide the diffs of later tasks
+  when: not ansible_check_mode
+  notify: Restart Promtail
+
+- name: Create positions directory
+  ansible.builtin.file:
+    path: "{{ promtail_positions_dir }}"
+    state: directory
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_user }}"
+    mode: "0750"
+
+- name: Copy Promtail config
+  ansible.builtin.template:
+    src: "{{ promtail_config_template }}"
+    dest: "{{ promtail_config_path }}"
+    owner: "root"
+    group: "{{ promtail_user }}"
+    mode: "0640"
+  notify: Restart Promtail
+
+- name: Configure as systemd
+  ansible.builtin.template:
+    src: "{{ promtail_systemd_unit_template }}"
+    dest: "{{ promtail_systemd_unit_path }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart Promtail
+
+- name: Start Promtail
+  ansible.builtin.systemd_service:
+    enabled: true
+    state: started
+    daemon_reload: true
+    name: "{{ promtail_systemd_unit_name }}"

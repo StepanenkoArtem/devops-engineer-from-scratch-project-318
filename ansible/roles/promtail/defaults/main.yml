@@ -1,0 +1,45 @@
+# Repository info
+# v3.6.11 is the last Loki release shipping promtail binaries; promtail is EOL since 2026-03-02
+promtail_repository: "https://github.com/grafana/loki/releases/download"
+promtail_release_version: "3.6.11"
+promtail_package: "promtail-linux-amd64.zip"
+promtail_checksum_file: "SHA256SUMS"
+promtail_download_url: "{{ promtail_repository }}/v{{ promtail_release_version }}/{{ promtail_package }}"
+promtail_checksum_url: "sha256:{{ promtail_repository }}/v{{ promtail_release_version }}/{{ promtail_checksum_file }}"
+
+# Download
+promtail_download_dir: "/etc/promtail"
+promtail_download_path: "{{ promtail_download_dir }}/{{ promtail_package }}"
+
+# Installation
+promtail_installation_dir: "/usr/local/bin"
+promtail_binary_path: "{{ promtail_installation_dir }}/{{ promtail_binary }}"
+
+# Configuration
+promtail_config_template: "promtail.yml.j2"
+promtail_config_path: "{{ promtail_download_dir }}/promtail.yml"
+
+# Read positions survive restarts, otherwise every restart re-sends the whole file
+promtail_positions_dir: "/var/lib/promtail"
+promtail_positions_path: "{{ promtail_positions_dir }}/positions.yml"
+
+# Loki lives on the monitoring host and is reachable over the VPC only
+promtail_loki_host: "{{ hostvars[groups['monitoring'][0]].private_address }}"
+promtail_loki_port: "{{ hostvars[groups['monitoring'][0]].loki_port }}"
+promtail_loki_push_url: "http://{{ promtail_loki_host }}:{{ promtail_loki_port }}/loki/api/v1/push"
+
+promtail_environment: "prod"
+
+# Docker container whose logs are shipped as job=application
+promtail_docker_container: "{{ app_container_name }}"
+
+# Systemd unit
+promtail_systemd_unit_template: "promtail.service.j2"
+promtail_systemd_unit_name: "promtail"
+promtail_systemd_unit_path: "/etc/systemd/system/{{ promtail_systemd_unit_name }}.service"
+
+# User
+# adm   - read /var/log/nginx/*.log (root:adm 0640)
+# docker - talk to /var/run/docker.sock for docker_sd_configs
+promtail_user: "promtail"
+promtail_extra_groups: "adm,docker"

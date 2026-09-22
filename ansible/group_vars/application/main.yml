@@ -7,3 +7,6 @@ db_host: "db-postgresql-hexlet4-do-user-13876020-0.i.db.ondigitalocean.com"
 db_port: "25060"
 db_name: "defaultdb"
 db_sslmode: "require"
+
+# Shared by roles deploy (container name) and promtail (log discovery filter)
+app_container_name: "bulletins"
