@@ -32,9 +32,9 @@
       - "{{ loki_config_directory }}:{{ loki_config_directory }}:ro"
       - "loki-data:{{ loki_data_mnt }}"
     networks:
-      - name: "{{ monitoring_network }}"
+      - name: "{{ loki_docker_network }}"
     ports:
-      - "{{ private_address }}:{{ loki_port }}:{{ loki_port }}"
+      - "{{ loki_bind_address }}:{{ loki_http_listen_port }}:{{ loki_http_listen_port }}"
     # expand-env resolves ${VAR} in the config, so S3 keys never land in the file on disk
     command: -config.file={{ loki_config_path }} -config.expand-env=true
     env:

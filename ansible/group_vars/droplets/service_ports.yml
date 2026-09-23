@@ -1,0 +1,13 @@
+# Every port a service listens on and something else consumes. Lives in the parent group, so a consumer
+# on one host sees the port of a service on another. Define it here only: overriding a single key at a
+# higher precedence replaces the whole dict, not just that key.
+service_ports:
+  application: 8080
+  actuator: 9090
+  nginx_status: 8081
+  nginx_exporter: 9113
+  node_exporter: 9100
+  promtail: 9080
+  prometheus: 9090
+  loki: 3100
+  grafana: 3000

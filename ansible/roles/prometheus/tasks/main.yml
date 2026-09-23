@@ -31,14 +31,19 @@
       - "{{ prometheus_config_directory }}:{{ prometheus_config_directory }}:ro"
       - "prometheus-data:/prometheus"
     networks:
-      - name: "{{ monitoring_network }}"
+      - name: "{{ prometheus_docker_network }}"
     ports:
-      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:{{ prometheus_listen_port }}:{{ prometheus_listen_port }}"
+    # Replaces the image CMD entirely, so its two default flags are repeated here
+    command:
+      - "--config.file={{ prometheus_config_directory }}/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.listen-address=:{{ prometheus_listen_port }}"
     restart_policy: always
 
 - name: Allow docker network to reach node_exporter
   community.general.ufw:
     rule: allow
-    port: "{{ node_exporter_port }}"
+    port: "{{ prometheus_node_exporter_port }}"
     proto: tcp
     from_ip: "172.16.0.0/12"

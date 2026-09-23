@@ -14,6 +14,10 @@ nginx_exporter_download_path: "{{ nginx_exporter_download_dir }}/{{ nginx_export
 nginx_exporter_installation_dir: "/usr/local/bin"
 nginx_exporter_binary_path: "{{ nginx_exporter_installation_dir }}/{{ nginx_exporter_binary }}"
 
+# Network
+nginx_exporter_listen_address: "{{ private_address }}:{{ service_ports.nginx_exporter }}"
+nginx_exporter_scrape_uri: "http://127.0.0.1:{{ service_ports.nginx_status }}{{ nginx_status_path }}"
+
 # Systemd unit
 nginx_exporter_systemd_unit_template: "nginx_exporter.service.j2"
 nginx_exporter_systemd_unit_name: "nginx_exporter"

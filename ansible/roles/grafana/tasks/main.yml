@@ -93,10 +93,12 @@
       - "{{ grafana_dashboards_path }}:{{ grafana_dashboards_path }}:ro"
       - "grafana-data:/var/lib/grafana"
     networks:
-      - name: "{{ monitoring_network }}"
+      - name: "{{ grafana_docker_network }}"
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:{{ grafana_host_port }}:{{ grafana_container_port }}"
     env:
+      # docker_container rejects non-string env values, and "{{ port }}" renders as a number
+      GF_SERVER_HTTP_PORT: "{{ grafana_container_port | string }}"
       GF_SECURITY_ADMIN_USER: "{{ grafana_admin_user }}"
       GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
       GF_SERVER_ROOT_URL: "{{ grafana_root_url }}"
@@ -108,6 +110,6 @@
 - name: Allow docker network to reach prometheus port
   community.general.ufw:
     rule: allow
-    port: "{{ prometheus_port }}"
+    port: "{{ grafana_prometheus_port }}"
     proto: tcp
     from_ip: "172.16.0.0/12"

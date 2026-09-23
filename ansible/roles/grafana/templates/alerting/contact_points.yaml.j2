@@ -6,8 +6,8 @@ contactPoints:
       - uid: ffu64g7vhbfgge
         type: telegram
         settings:
-          bottoken: "{{ tg_bot_token }}"
-          chatid: "{{ tg_chat_id }}"
+          bottoken: "{{ grafana_telegram_bot_token }}"
+          chatid: "{{ grafana_telegram_chat_id }}"
           disable_notification: false
           disable_web_page_preview: false
           message: '{% raw %}{{ template "telegram.message" . }}{% endraw %}'

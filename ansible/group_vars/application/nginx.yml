@@ -1,5 +1,4 @@
 nginx_remove_default_vhost: true
-nginx_status_port: 8081
 nginx_status_path: "/status"
 nginx_listen_ipv6: false
 
@@ -37,9 +36,9 @@ nginx_vhost_http:
         return 301 https://$host$request_uri;
       }
 
-  - listen: "127.0.0.1:{{ nginx_status_port }}"
+  - listen: "127.0.0.1:{{ service_ports.nginx_status }}"
     server_name: "{{ domain }}"
-    filename: "{{ nginx_status_port }}-{{ domain }}.conf"
+    filename: "{{ service_ports.nginx_status }}-{{ domain }}.conf"
     access_log: "off"
     extra_parameters: |
       location = {{ nginx_status_path }} {

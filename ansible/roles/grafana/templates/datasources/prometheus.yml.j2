@@ -5,5 +5,5 @@ prune: true
 datasources:
   - name: Prometheus
     type: prometheus
-    url: "http://prometheus:{{ prometheus_port }}"
+    url: "{{ grafana_prometheus_url }}"
     uid: "prometheus"

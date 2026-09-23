@@ -1,2 +1,13 @@
 prometheus_config_directory: "/etc/prometheus"
 prometheus_image: "prom/prometheus:v3.13.1"
+
+# Prometheus listens on the registry port itself (--web.listen-address), so the loopback publish
+# and Grafana over the docker network reach it on the same number
+prometheus_listen_port: "{{ service_ports.prometheus }}"
+prometheus_docker_network: "{{ monitoring_network }}"
+
+# Scrape targets, one door per job
+prometheus_node_exporter_port: "{{ service_ports.node_exporter }}"
+prometheus_actuator_port: "{{ service_ports.actuator }}"
+prometheus_nginx_exporter_port: "{{ service_ports.nginx_exporter }}"
+prometheus_promtail_port: "{{ service_ports.promtail }}"

@@ -1,7 +1,7 @@
 auth_enabled: false
 
 server:
-  http_listen_port: {{ loki_port }}
+  http_listen_port: {{ loki_http_listen_port }}
   log_level: info
 
 common:
@@ -51,7 +51,7 @@ schema_config:
 pattern_ingester:
   enabled: true
   metric_aggregation:
-    loki_address: localhost:{{ loki_port }}
+    loki_address: localhost:{{ loki_http_listen_port }}
 
 
 frontend:

@@ -10,7 +10,7 @@ scrape_configs:
 
     static_configs:
 {% for host in groups['droplets'] %}
-      - targets: [ "{{ hostvars[host].private_address }}:{{ node_exporter_port }}" ]
+      - targets: [ "{{ hostvars[host].private_address }}:{{ prometheus_node_exporter_port }}" ]
         labels: {
           role: "{{ hostvars[host].role }}",
           node: "{{ host }}"
@@ -23,7 +23,7 @@ scrape_configs:
 
     static_configs:
 {% for application in groups['application'] %}
-      - targets: ["{{ hostvars[application].private_address }}:{{ actuator_port }}"]
+      - targets: ["{{ hostvars[application].private_address }}:{{ prometheus_actuator_port }}"]
         labels: {
           role: "{{ hostvars[application].role }}",
           node: "{{ hostvars[application].inventory_hostname }}"
@@ -34,7 +34,7 @@ scrape_configs:
 
     static_configs:
 {% for application in groups['application'] %}
-      - targets: ["{{ hostvars[application].private_address }}:{{ hostvars[application].nginx_exporter_port }}"]
+      - targets: ["{{ hostvars[application].private_address }}:{{ prometheus_nginx_exporter_port }}"]
         labels: {
           role: "{{ hostvars[application].role }}",
           node: "{{ hostvars[application].inventory_hostname }}"
@@ -45,7 +45,7 @@ scrape_configs:
 
     static_configs:
 {% for application in groups['application'] %}
-      - targets: ["{{ hostvars[application].private_address }}:{{ hostvars[application].promtail_port }}"]
+      - targets: ["{{ hostvars[application].private_address }}:{{ prometheus_promtail_port }}"]
         labels: {
           role: "{{ hostvars[application].role }}",
           node: "{{ hostvars[application].inventory_hostname }}"

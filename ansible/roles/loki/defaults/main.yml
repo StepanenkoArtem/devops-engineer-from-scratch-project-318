@@ -5,6 +5,12 @@ loki_config_path: "{{ loki_config_directory }}/loki.yml"
 
 loki_data_mnt: "/loki"
 
+# Loki listens on the registry port itself (http_listen_port in its config), so the VPC and the
+# docker network reach it on the same number
+loki_http_listen_port: "{{ service_ports.loki }}"
+loki_bind_address: "{{ private_address }}"
+loki_docker_network: "{{ monitoring_network }}"
+
 # Chunks and index live in a dedicated Space: its key cannot reach the application's user files
 loki_s3_bucket: "hexlet4-logs"
 loki_s3_region: "fra1"

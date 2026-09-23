@@ -1,1 +1,2 @@
-promtail_port: 9080
+# Loki lives on the monitoring host and is reachable over the VPC only
+promtail_loki_push_url: "http://{{ hostvars[groups['monitoring'][0]].private_address }}:{{ service_ports.loki }}/loki/api/v1/push"
