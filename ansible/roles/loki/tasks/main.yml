@@ -25,7 +25,7 @@
 
 - name: Create Loki container
   community.docker.docker_container:
-    name: loki
+    name: "{{ loki_container_name }}"
     state: started
     image: "{{ loki_image }}"
     volumes:

@@ -12,9 +12,8 @@ grafana_container_port: 3000
 grafana_docker_network: "{{ monitoring_network }}"
 
 # Prometheus and Loki are reached by container name over the shared docker network
-grafana_prometheus_port: "{{ service_ports.prometheus }}"
-grafana_prometheus_url: "http://prometheus:{{ grafana_prometheus_port }}"
-grafana_loki_url: "http://loki:{{ service_ports.loki }}"
+grafana_prometheus_url: "http://{{ service_containers.prometheus }}:{{ service_ports.prometheus }}"
+grafana_loki_url: "http://{{ service_containers.loki }}:{{ service_ports.loki }}"
 
 grafana_telegram_bot_token: "{{ vault_tg_bot_token }}"
 grafana_telegram_chat_id: "{{ vault_tg_chat_id }}"

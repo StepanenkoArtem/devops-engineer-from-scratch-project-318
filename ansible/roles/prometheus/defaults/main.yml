@@ -1,5 +1,6 @@
 prometheus_config_directory: "/etc/prometheus"
 prometheus_image: "prom/prometheus:v3.13.1"
+prometheus_container_name: "{{ service_containers.prometheus }}"
 
 # Prometheus listens on the registry port itself (--web.listen-address), so the loopback publish
 # and Grafana over the docker network reach it on the same number

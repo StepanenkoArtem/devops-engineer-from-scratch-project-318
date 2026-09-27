@@ -24,7 +24,7 @@
 
 - name: Create Prometheus container
   community.docker.docker_container:
-    name: prometheus
+    name: "{{ prometheus_container_name }}"
     state: started
     image: "{{ prometheus_image }}"
     volumes:

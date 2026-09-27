@@ -6,3 +6,9 @@ docker_users:
 # pool, so the firewall rules for container-to-host traffic can name it exactly
 monitoring_network: monitoring
 monitoring_subnet: "172.18.0.0/16"
+
+# Container names double as DNS names inside monitoring_network, so they are an interface between
+# roles, just like service_ports. Only names that another role consumes live here
+service_containers:
+  prometheus: prometheus
+  loki: loki
