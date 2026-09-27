@@ -27,5 +27,8 @@ requirements: ## Install python dependencies and Ansible collections/roles
 lint: ## Run ansible-lint (static checks, no hosts contacted)
 	ansible-lint
 
+smoke: ## Check the live system: public endpoints, Prometheus, Loki and every scrape target
+	ansible-playbook ansible/smoke.yml -i ansible/inventory.ini
 
-.PHONY: help droplet application application-check monitoring monitoring-check requirements lint
+
+.PHONY: help droplet application application-check monitoring monitoring-check requirements lint smoke

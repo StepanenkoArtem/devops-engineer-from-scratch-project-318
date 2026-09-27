@@ -1,0 +1,99 @@
+# Smoke test: is the deployed system alive right now? Every check runs to the end and each play
+# reports all of its failures at once, so one run shows everything that is broken.
+
+- name: Smoke from outside, as a user sees it
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # Hosts are named explicitly; their domains come from the inventory
+    smoke_public_checks:
+      - name: application page
+        url: "https://{{ hostvars['bulletins'].domain }}/"
+      - name: application REST, reaches the database
+        url: "https://{{ hostvars['bulletins'].domain }}/api/bulletins"
+      - name: grafana health, 503 when its database fails
+        url: "https://{{ hostvars['grafana'].domain }}/api/health"
+
+  tasks:
+    - name: Probe public endpoints
+      ansible.builtin.uri:
+        url: "{{ item.url }}"
+        timeout: 10
+      loop: "{{ smoke_public_checks }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: smoke_public
+      failed_when: false
+
+    - name: Every public endpoint answers 200
+      ansible.builtin.assert:
+        that: smoke_public_failed | length == 0
+        fail_msg: "Not 200: {{ smoke_public_failed | join(', ') }}"
+        success_msg: "All {{ smoke_public.results | length }} public checks answered 200"
+      vars:
+        smoke_public_failed: >-
+          {{ smoke_public.results | rejectattr('status', 'equalto', 200)
+             | map(attribute='item.name') | list }}
+
+- name: Smoke from inside the monitoring host
+  hosts: monitoring
+  gather_facts: false
+
+  vars:
+    # The fleet as it must be: job@node for every target Prometheus has to scrape. Deliberately
+    # written out, not derived from the inventory, so a host that vanishes from the inventory fails
+    # here instead of shrinking the expectation along with the config
+    smoke_expected_targets:
+      - node@bulletins
+      - node@grafana
+      - application@bulletins
+      - nginx@bulletins
+      - promtail@bulletins
+
+    smoke_prometheus_url: "http://127.0.0.1:{{ service_ports.prometheus }}"
+    smoke_up_metrics: >-
+      {{ (smoke_up.json.data.result | default([])) | selectattr('value.1', 'equalto', '1')
+         | map(attribute='metric') | list }}
+    smoke_targets_up: >-
+      {{ smoke_up_metrics | map(attribute='job') | zip(smoke_up_metrics | map(attribute='node'))
+         | map('join', '@') | list }}
+    smoke_targets_missing: "{{ smoke_expected_targets | difference(smoke_targets_up) }}"
+
+  tasks:
+    - name: Probe Prometheus health
+      ansible.builtin.uri:
+        url: "{{ smoke_prometheus_url }}/-/healthy"
+        timeout: 10
+      register: smoke_prometheus_healthy
+      failed_when: false
+
+    - name: Probe Loki readiness
+      ansible.builtin.uri:
+        url: "http://{{ private_address }}:{{ service_ports.loki }}/ready"
+        timeout: 10
+      register: smoke_loki_ready
+      failed_when: false
+
+    # Right after a deploy Prometheus may not have scraped yet, so give it a few intervals
+    - name: Query which targets are up
+      ansible.builtin.uri:
+        url: "{{ smoke_prometheus_url }}/api/v1/query?query=up"
+        timeout: 10
+      register: smoke_up
+      until: smoke_targets_missing | length == 0
+      retries: 4
+      delay: 15
+      failed_when: false
+
+    - name: Prometheus, Loki and every expected target are healthy
+      ansible.builtin.assert:
+        that: smoke_inside_failures | length == 0
+        fail_msg: "{{ smoke_inside_failures | join('; ') }}"
+        success_msg: "Prometheus healthy, Loki ready, all {{ smoke_expected_targets | length }} targets up"
+      vars:
+        smoke_inside_failures: >-
+          {{ ([] if smoke_prometheus_healthy.status == 200 else ['Prometheus /-/healthy: ' ~ smoke_prometheus_healthy.status])
+             + ([] if smoke_loki_ready.status == 200 else ['Loki /ready: ' ~ smoke_loki_ready.status])
+             + ([] if smoke_targets_missing | length == 0 else ['down or missing: ' ~ smoke_targets_missing | join(', ')]) }}
