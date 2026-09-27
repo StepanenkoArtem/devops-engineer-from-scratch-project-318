@@ -42,4 +42,3 @@
       LOKI_S3_SECRET_ACCESS_KEY: "{{ loki_s3_secret_key }}"
     restart_policy: always
   no_log: "{{ no_log | default(true) }}"
-

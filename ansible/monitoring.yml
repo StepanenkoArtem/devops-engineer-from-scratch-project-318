@@ -37,7 +37,7 @@
         mode: "0755"
 
   roles:
-    - prepare-nginx
+    - prepare_nginx
     - prometheus.prometheus.node_exporter
     - geerlingguy.nginx
     - prometheus
@@ -60,7 +60,7 @@
 
     - name: Re-check nginx configuration
       ansible.builtin.include_role:
-        name: prepare-nginx
+        name: prepare_nginx
 
     - name: Re-Run nginx with TLS
       ansible.builtin.include_role:

@@ -1,0 +1,6 @@
+# ansible-lint configuration. Picked up automatically from the repo root, so `make lint` needs no flags.
+# Reference: https://docs.ansible.com/projects/lint/configuring/
+
+profile: "production"
+exclude_paths:
+  - "**/vault.yml"
