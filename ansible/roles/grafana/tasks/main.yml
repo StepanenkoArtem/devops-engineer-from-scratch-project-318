@@ -106,10 +106,3 @@
 
     restart_policy: unless-stopped
   no_log: "{{ no_log | default(true) }}"
-
-- name: Allow docker network to reach prometheus port
-  community.general.ufw:
-    rule: allow
-    port: "{{ grafana_prometheus_port }}"
-    proto: tcp
-    from_ip: "172.16.0.0/12"

@@ -10,6 +10,8 @@
     - name: Create a docker network
       community.docker.docker_network:
         name: "{{ monitoring_network }}"
+        ipam_config:
+          - subnet: "{{ monitoring_subnet }}"
 
     # TODO: consider to extract UFW to role
     - name: Configure public ports

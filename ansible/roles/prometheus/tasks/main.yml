@@ -46,4 +46,4 @@
     rule: allow
     port: "{{ prometheus_node_exporter_port }}"
     proto: tcp
-    from_ip: "172.16.0.0/12"
+    from_ip: "{{ prometheus_docker_subnet }}"
