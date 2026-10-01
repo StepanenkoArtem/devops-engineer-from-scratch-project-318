@@ -17,7 +17,9 @@
       -v %s:/tmp/loki.yml:ro
       {{ loki_image }}
       -config.file=/tmp/loki.yml -config.expand-env=true -verify-config
-  notify: Restart Loki
+  notify:
+    - Restart Loki
+    - Wait for Loki readiness
 
 - name: Create Loki data volume
   community.docker.docker_volume:
@@ -42,3 +44,4 @@
       LOKI_S3_SECRET_ACCESS_KEY: "{{ loki_s3_secret_key }}"
     restart_policy: always
   no_log: "{{ no_log | default(true) }}"
+  notify: Wait for Loki readiness
