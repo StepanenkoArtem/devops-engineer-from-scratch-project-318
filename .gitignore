@@ -1,3 +1,4 @@
 docs/**
 ansible/*password*
 .DS_Store
+.ansible/
