@@ -1,45 +1,39 @@
 # deploy
 
-Ansible role that deploys the **bulletins** application as a Docker container on the target host: prepares the
-bind-mounted volumes, pulls the requested image, starts the container, and verifies it with a post-start HTTP
-health-check.
+Deploys the Bulletins application as a Docker container: prepares the bind-mounted directories, pulls the image, starts
+the container and waits for the Actuator health endpoint.
 
 ## Requirements
 
-- Docker on the host (installed earlier in the play by the `geerlingguy.docker` role).
-- The image must already be built and pushed to Docker Hub by the app repo's CI.
+- Docker on the host (the play installs it with `geerlingguy.docker` first).
+- The image is already built and pushed to Docker Hub by the application repository's CI.
 
-## Role variables
+## Variables
 
-**Required — no default, must be passed at run time:**
+Inputs with no default, set in the inventory:
 
-- `image_tag` — the immutable image tag to deploy, e.g. `sha-8be5c56`. There is deliberately no default (per ADR-0001:
-  never deploy `latest`); the playbook fails fast if it is undefined or empty.
+| Variable                                                     | Where it is set                             |
+| ------------------------------------------------------------ | ------------------------------------------- |
+| `image_tag`                                                  | `ansible/group_vars/application/deploy.yml` |
+| `deploy_s3_bucket`, `deploy_s3_region`, `deploy_s3_endpoint` | `ansible/group_vars/application/deploy.yml` |
+| `db_host`, `db_port`, `db_name`, `db_sslmode`                | `ansible/group_vars/application/main.yml`   |
+| `vault_db_username`, `vault_db_password`                     | `ansible/group_vars/application/vault.yml`  |
+| `vault_s3_access_key`, `vault_s3_secret_key`                 | `ansible/group_vars/application/vault.yml`  |
+| `app_container_name`, `private_address`, `service_ports`     | inventory group and host variables          |
 
-**Defaults (`defaults/main.yml`, override if needed):**
+`image_tag` must be an immutable `sha-<commit>` tag; `application.yml` rejects anything else before touching the host.
 
-- `deploy_app_uid` (`1001`) — uid the container process runs as; must match the `USER` uid in the app Dockerfile,
-  otherwise the container can't write to the bind mounts.
-- `deploy_app_name`, `deploy_docker_registry_repo`, `deploy_docker_container` — image and container naming;
-  `deploy_docker_image` is derived from them plus `image_tag`.
-- `deploy_app_base_dir` (`/opt/bulletins`), `deploy_log_path`, `deploy_tmp_path` — host paths bind-mounted into the
-  container.
-- `deploy_s3_bucket`, `deploy_s3_region`, `deploy_s3_endpoint` — object-storage config.
-- `deploy_no_log` (`true`) — redacts the container env (secrets) from Ansible output; set `-e deploy_no_log=false` to
-  debug.
+Defaults in `defaults/main.yml`:
 
-**Consumed from group_vars / vault (must be defined by the play):**
+- `deploy_app_uid` (`1001`) must match the `USER` uid in the application Dockerfile, otherwise the container cannot
+  write to the bind mounts.
+- `deploy_http_container_port` (`8080`) and `deploy_actuator_container_port` (`9090`) are passed to the application as
+  `SERVER_PORT` and `MANAGEMENT_SERVER_PORT`.
+- `deploy_web_log_level` (`INFO`).
 
-- `application_port` — app port, proxied by nginx and published on `127.0.0.1`.
-- `db_host`, `db_port`, `db_name`, `db_sslmode` — database connection.
-- `vault_db_username`, `vault_db_password`, `vault_s3_access_key`, `vault_s3_secret_key` — secrets (Ansible Vault).
+The container environment holds secrets, so its task runs with `no_log`. Pass `-e no_log=false` to debug.
 
 ## Example
 
-Deploy the image built for a specific commit (see the repo `Makefile`):
-
-    make deploy IMAGE_TAG=sha-8be5c56
-
-or invoke the playbook directly:
-
-    ansible-playbook ansible/application.yml -i ansible/inventory.ini -e image_tag=sha-8be5c56
+    make application                        # the version pinned in the inventory
+    make application IMAGE_TAG=sha-8be5c56  # another version for this run
