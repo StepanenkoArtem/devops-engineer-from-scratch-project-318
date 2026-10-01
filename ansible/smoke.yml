@@ -1,0 +1,106 @@
+- name: Smoke from outside, as a user sees it
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    smoke_public_checks:
+      - name: application page
+        url: "https://{{ hostvars['bulletins'].domain }}/"
+      - name: application REST, reaches the database
+        url: "https://{{ hostvars['bulletins'].domain }}/api/bulletins"
+      - name: grafana health, 503 when its database fails
+        url: "https://{{ hostvars['grafana'].domain }}/api/health"
+
+  tasks:
+    - name: Probe public endpoints
+      ansible.builtin.uri:
+        url: "{{ item.url }}"
+        timeout: 10
+      loop: "{{ smoke_public_checks }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: smoke_public
+      failed_when: false
+
+    - name: Record public failures
+      ansible.builtin.set_fact:
+        smoke_public_failures: >-
+          {{ smoke_public.results | rejectattr('status', 'equalto', 200)
+             | map(attribute='item.name') | map('regex_replace', '^', 'not 200: ') | list }}
+
+- name: Smoke from inside the monitoring host
+  hosts: monitoring
+  gather_facts: false
+  ignore_unreachable: true
+
+  vars:
+    smoke_expected_targets:
+      - node@bulletins
+      - node@grafana
+      - application@bulletins
+      - nginx@bulletins
+      - promtail@bulletins
+
+    smoke_prometheus_url: "http://127.0.0.1:{{ service_ports.prometheus }}"
+    smoke_up_metrics: >-
+      {{ (smoke_up.json.data.result | default([])) | selectattr('value.1', 'equalto', '1')
+         | map(attribute='metric') | list }}
+    smoke_targets_up: >-
+      {{ smoke_up_metrics | map(attribute='job') | zip(smoke_up_metrics | map(attribute='node'))
+         | map('join', '@') | list }}
+    smoke_targets_missing: "{{ smoke_expected_targets | difference(smoke_targets_up) }}"
+
+  tasks:
+    - name: Probe Prometheus health
+      ansible.builtin.uri:
+        url: "{{ smoke_prometheus_url }}/-/healthy"
+        timeout: 10
+      register: smoke_prometheus_healthy
+      failed_when: false
+
+    - name: Probe Loki readiness
+      ansible.builtin.uri:
+        url: "http://{{ private_address }}:{{ service_ports.loki }}/ready"
+        timeout: 10
+        return_content: true
+      register: smoke_loki_ready
+      failed_when: false
+
+    - name: Query which targets are up
+      ansible.builtin.uri:
+        url: "{{ smoke_prometheus_url }}/api/v1/query?query=up"
+        timeout: 10
+      register: smoke_up
+      until: smoke_targets_missing | length == 0
+      retries: 4
+      delay: 15
+      failed_when: false
+
+    - name: Record inside failures
+      ansible.builtin.set_fact:
+        smoke_inside_failures: >-
+          {{ ([] if (smoke_prometheus_healthy.status | default(-1)) == 200
+                else ['Prometheus /-/healthy: ' ~ (smoke_prometheus_healthy.status | default('unreachable'))])
+             + ([] if (smoke_loki_ready.status | default(-1)) == 200
+                else ['Loki /ready: ' ~ (smoke_loki_ready.status | default('unreachable')) ~ ' '
+                      ~ (smoke_loki_ready.content | default('') | trim)])
+             + ([] if smoke_targets_missing | length == 0
+                else ['down or missing: ' ~ smoke_targets_missing | join(', ')]) }}
+
+- name: Smoke verdict
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    smoke_failures: >-
+      {{ (smoke_public_failures | default(['public checks did not run']))
+         + (hostvars['grafana'].smoke_inside_failures | default(['monitoring checks did not run'])) }}
+
+  tasks:
+    - name: Every check passed
+      ansible.builtin.assert:
+        that: smoke_failures | length == 0
+        fail_msg: "{{ smoke_failures | join('; ') }}"
+        success_msg: "Public endpoints, Prometheus, Loki and every scrape target are healthy"

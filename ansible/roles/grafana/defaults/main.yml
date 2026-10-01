@@ -3,6 +3,23 @@ grafana_image_tag: "13.1.1-slim"
 grafana_root_url: "https://{{ domain }}/"
 grafana_csrf_trusted_origin: "https://{{ domain }}"
 
+grafana_admin_user: "admin"
+grafana_admin_password: "{{ vault_grafana_admin_password }}"
+
+grafana_viewer_login: "mentor"
+grafana_viewer_password: "{{ vault_grafana_viewer_password }}"
+
+grafana_host_port: "{{ service_ports.grafana }}"
+grafana_container_port: 3000
+grafana_docker_network: "{{ monitoring_network }}"
+grafana_api_url: "http://127.0.0.1:{{ grafana_host_port }}"
+
+grafana_prometheus_url: "http://{{ service_containers.prometheus }}:{{ service_ports.prometheus }}"
+grafana_loki_url: "http://{{ service_containers.loki }}:{{ service_ports.loki }}"
+
+grafana_telegram_bot_token: "{{ vault_tg_bot_token }}"
+grafana_telegram_chat_id: "{{ vault_tg_chat_id }}"
+
 grafana_config_root: "/etc/grafana"
 grafana_provisioning_path: "{{ grafana_config_root }}/provisioning"
 grafana_datasources_path: "{{ grafana_provisioning_path }}/datasources"

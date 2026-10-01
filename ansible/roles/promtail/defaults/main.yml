@@ -23,10 +23,9 @@ promtail_config_path: "{{ promtail_download_dir }}/promtail.yml"
 promtail_positions_dir: "/var/lib/promtail"
 promtail_positions_path: "{{ promtail_positions_dir }}/positions.yml"
 
-# Loki lives on the monitoring host and is reachable over the VPC only
-promtail_loki_host: "{{ hostvars[groups['monitoring'][0]].private_address }}"
-promtail_loki_port: "{{ hostvars[groups['monitoring'][0]].loki_port }}"
-promtail_loki_push_url: "http://{{ promtail_loki_host }}:{{ promtail_loki_port }}/loki/api/v1/push"
+# Network
+promtail_listen_address: "{{ private_address }}"
+promtail_listen_port: "{{ service_ports.promtail }}"
 
 promtail_environment: "prod"
 

@@ -24,21 +24,25 @@
 
 - name: Create Prometheus container
   community.docker.docker_container:
-    name: prometheus
+    name: "{{ prometheus_container_name }}"
     state: started
     image: "{{ prometheus_image }}"
     volumes:
       - "{{ prometheus_config_directory }}:{{ prometheus_config_directory }}:ro"
       - "prometheus-data:/prometheus"
     networks:
-      - name: "{{ monitoring_network }}"
+      - name: "{{ prometheus_docker_network }}"
     ports:
-      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:{{ prometheus_listen_port }}:{{ prometheus_listen_port }}"
+    command:
+      - "--config.file={{ prometheus_config_directory }}/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.listen-address=:{{ prometheus_listen_port }}"
     restart_policy: always
 
 - name: Allow docker network to reach node_exporter
   community.general.ufw:
     rule: allow
-    port: "{{ node_exporter_port }}"
+    port: "{{ prometheus_node_exporter_port }}"
     proto: tcp
-    from_ip: "172.16.0.0/12"
+    from_ip: "{{ prometheus_docker_subnet }}"

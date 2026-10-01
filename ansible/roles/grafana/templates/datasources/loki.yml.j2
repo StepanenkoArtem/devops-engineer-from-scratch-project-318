@@ -5,6 +5,6 @@ prune: true
 datasources:
   - name: Loki
     type: loki
-    url: "http://loki:{{ loki_port }}"
+    url: "{{ grafana_loki_url }}"
     uid: "loki"
 

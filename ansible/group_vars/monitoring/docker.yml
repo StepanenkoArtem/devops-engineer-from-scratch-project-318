@@ -1,3 +1,10 @@
 docker_packages_state: present
 docker_users:
   - "{{ non_root_user_name }}"
+
+monitoring_network: monitoring
+monitoring_subnet: "172.18.0.0/16"
+
+service_containers:
+  prometheus: prometheus
+  loki: loki

@@ -1,0 +1,10 @@
+service_ports:
+  application: 8080
+  actuator: 9090
+  nginx_status: 8081
+  nginx_exporter: 9113
+  node_exporter: 9100
+  promtail: 9080
+  prometheus: 9090
+  loki: 3100
+  grafana: 3000

@@ -15,8 +15,8 @@
 - name: Check TSL certificate
   ansible.builtin.stat:
     path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
-  register: cert_file
+  register: prepare_nginx_cert_file
 
-- name: Build nginx vhosts conditionally
+- name: Build nginx vhosts conditionally  # noqa: var-naming[no-role-prefix] prefix is defined by geerlingguy.nginx contract
   ansible.builtin.set_fact:
-    nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if cert_file.stat.exists else []) }}"
+    nginx_vhosts: "{{ nginx_vhost_http + (nginx_vhost_https if prepare_nginx_cert_file.stat.exists else []) }}"

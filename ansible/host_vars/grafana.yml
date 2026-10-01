@@ -1,7 +1,6 @@
 private_address: "10.114.0.3"
 domain: "grafana.artem.diy"
-reverse_proxy_port: 3000
+reverse_proxy_port: "{{ service_ports.grafana }}"
 monitoring_ports:
-  - "{{ node_exporter_port }}"
-  - "{{ loki_port }}"
-grafana_admin_user: "admin"
+  - "{{ service_ports.node_exporter }}"
+  - "{{ service_ports.loki }}"

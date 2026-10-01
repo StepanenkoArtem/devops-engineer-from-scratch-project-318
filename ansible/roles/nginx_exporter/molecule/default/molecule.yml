@@ -1,0 +1,14 @@
+ansible:
+  executor:
+    args:
+      ansible_playbook:
+        - --inventory=inventory/
+scenario:
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - verify
+    - destroy

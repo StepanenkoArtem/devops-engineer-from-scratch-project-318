@@ -1,0 +1,5 @@
+nginx_exporter_binary: "nginx-prometheus-exporter"
+
+nginx_exporter_arch_names:
+  x86_64: amd64
+  aarch64: arm64

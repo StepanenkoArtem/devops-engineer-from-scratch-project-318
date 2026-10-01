@@ -1,0 +1,27 @@
+- name: Prepare
+  hosts: molecule
+  gather_facts: false
+  tasks:
+    - name: Install nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+
+    - name: Expose stub_status on loopback
+      ansible.builtin.copy:
+        dest: /etc/nginx/conf.d/stub_status.conf
+        content: |
+          server {
+            listen 127.0.0.1:{{ nginx_exporter_test_stub_status_port }};
+            location = {{ nginx_exporter_test_stub_status_path }} {
+              stub_status;
+            }
+          }
+        mode: "0644"
+
+    - name: Restart nginx to load stub_status
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: restarted
+        enabled: true

@@ -1,5 +1,13 @@
 - name: Restart Loki
   community.docker.docker_container:
-    name: loki
+    name: "{{ loki_container_name }}"
     state: started
     restart: true
+
+- name: Wait for Loki readiness
+  ansible.builtin.uri:
+    url: "{{ loki_ready_url }}"
+  register: loki_ready
+  until: loki_ready.status | default(0) == 200
+  retries: 24
+  delay: 5

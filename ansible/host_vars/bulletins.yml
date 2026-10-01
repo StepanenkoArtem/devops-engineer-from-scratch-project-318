@@ -1,8 +1,8 @@
 private_address: "10.114.0.2"
 domain: "bulletins.artem.diy"
-reverse_proxy_port: 8080
+reverse_proxy_port: "{{ service_ports.application }}"
 monitoring_ports:
-  - "{{ node_exporter_port }}"
-  - "{{ actuator_port }}"
-  - "{{ nginx_exporter_port }}"
-  - "{{ promtail_port }}"
+  - "{{ service_ports.node_exporter }}"
+  - "{{ service_ports.actuator }}"
+  - "{{ service_ports.nginx_exporter }}"
+  - "{{ service_ports.promtail }}"

@@ -10,8 +10,9 @@
     - name: Create a docker network
       community.docker.docker_network:
         name: "{{ monitoring_network }}"
+        ipam_config:
+          - subnet: "{{ monitoring_subnet }}"
 
-    # TODO: consider to extract UFW to role
     - name: Configure public ports
       community.general.ufw:
         rule: allow
@@ -37,7 +38,7 @@
         mode: "0755"
 
   roles:
-    - prepare-nginx
+    - prepare_nginx
     - prometheus.prometheus.node_exporter
     - geerlingguy.nginx
     - prometheus
@@ -60,7 +61,7 @@
 
     - name: Re-check nginx configuration
       ansible.builtin.include_role:
-        name: prepare-nginx
+        name: prepare_nginx
 
     - name: Re-Run nginx with TLS
       ansible.builtin.include_role:

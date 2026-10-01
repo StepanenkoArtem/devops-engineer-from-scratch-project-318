@@ -1,2 +1,12 @@
 prometheus_config_directory: "/etc/prometheus"
 prometheus_image: "prom/prometheus:v3.13.1"
+prometheus_container_name: "{{ service_containers.prometheus }}"
+
+prometheus_listen_port: "{{ service_ports.prometheus }}"
+prometheus_docker_network: "{{ monitoring_network }}"
+prometheus_docker_subnet: "{{ monitoring_subnet }}"
+
+prometheus_node_exporter_port: "{{ service_ports.node_exporter }}"
+prometheus_actuator_port: "{{ service_ports.actuator }}"
+prometheus_nginx_exporter_port: "{{ service_ports.nginx_exporter }}"
+prometheus_promtail_port: "{{ service_ports.promtail }}"

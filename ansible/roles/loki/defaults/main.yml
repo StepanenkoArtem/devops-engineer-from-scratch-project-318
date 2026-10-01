@@ -4,11 +4,13 @@ loki_config_directory: "/etc/loki"
 loki_config_path: "{{ loki_config_directory }}/loki.yml"
 
 loki_data_mnt: "/loki"
+loki_container_name: "{{ service_containers.loki }}"
 
-# Chunks and index live in a dedicated Space: its key cannot reach the application's user files
-loki_s3_bucket: "hexlet4-logs"
-loki_s3_region: "fra1"
-loki_s3_endpoint: "fra1.digitaloceanspaces.com"
+loki_http_listen_port: "{{ service_ports.loki }}"
+loki_bind_address: "{{ private_address }}"
+loki_docker_network: "{{ monitoring_network }}"
+loki_ready_url: "http://{{ loki_bind_address }}:{{ loki_http_listen_port }}/ready"
+
 loki_s3_access_key: "{{ vault_s3_logs_access_key }}"
 loki_s3_secret_key: "{{ vault_s3_logs_secret_key }}"
 
