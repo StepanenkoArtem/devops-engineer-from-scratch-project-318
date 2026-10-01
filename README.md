@@ -204,6 +204,10 @@ make application IMAGE_TAG=sha-<commit>
 - Grafana evaluates the alert rules, so nothing reports Grafana's own death. That needs a check from outside this host.
 - Loki's `/ready` has been seen returning `503` for a short while with ingestion and queries still working. `make smoke`
   stays strict on purpose and prints the response body when it happens.
+- Grafana passwords are applied only when an account is first created. Changing `vault_grafana_admin_password` later
+  makes the deploy stop with `401` until the stored password is reset with
+  `docker exec grafana grafana cli admin reset-admin-password <new password>`. The `mentor` account is created once and
+  not reconciled afterwards, neither its password nor its role.
 - The bootstrap playbook is one-shot. It closes the root login it connects with.
 - The deploy user has passwordless `sudo`.
 - Dashboard and alerting files deleted from the repository are not removed from the server.
