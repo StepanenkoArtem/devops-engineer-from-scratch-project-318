@@ -26,7 +26,7 @@ monitoring-check: ## Dry-run monitoring deploy (--check --diff)
 	ansible-playbook ansible/monitoring.yml -i ansible/inventory.ini --check --diff
 
 requirements: ## Install python dependencies and Ansible collections/roles
-	python3 -m pip install -r requirements.txt && ansible-galaxy install -r ansible/requirements.yml
+	python3 -m pip install -r requirements.txt && ansible-galaxy install -r requirements.yml
 
 lint: ## Run ansible-lint (static checks, no hosts contacted)
 	ansible-lint
