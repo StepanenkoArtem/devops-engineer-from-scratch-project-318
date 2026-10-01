@@ -130,7 +130,12 @@ Manual verification:
 
 ### Dashboards
 
-Provisioned from `ansible/roles/grafana/files/dashboards/`, read-only in the UI.
+Provisioned from `ansible/roles/grafana/files/dashboards/`, read-only in the UI. To update one, edit a copy in the UI,
+export it as JSON (model `Classic`, with the original `uid`), save it over the file in that directory and run:
+
+```sh
+make monitoring
+```
 
 ![System Usage dashboard](assets/system-usage-dashboard.png)
 
