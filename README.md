@@ -141,6 +141,9 @@ export it as JSON (model `Classic`, with the original `uid`), save it over the f
 make monitoring
 ```
 
+Response codes and request rate come from the application's Actuator metrics. Latency is measured one hop earlier, at
+nginx: the `Upstream latency p95` panel computes it through Loki from `upstream_response_time` in the access log.
+
 ![System Usage dashboard](assets/system-usage-dashboard.png)
 
 ![Bulletins App dashboard](assets/bulletins-app-dashboard.png)
