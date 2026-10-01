@@ -1,6 +1,3 @@
-# Molecule scenario config. This file is what makes the directory a scenario:
-# Molecule discovers scenarios by the molecule/*/molecule.yml pattern.
-
 ansible:
   executor:
     args:

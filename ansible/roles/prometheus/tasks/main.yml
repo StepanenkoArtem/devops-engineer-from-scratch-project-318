@@ -34,7 +34,6 @@
       - name: "{{ prometheus_docker_network }}"
     ports:
       - "127.0.0.1:{{ prometheus_listen_port }}:{{ prometheus_listen_port }}"
-    # Replaces the image CMD entirely, so its two default flags are repeated here
     command:
       - "--config.file={{ prometheus_config_directory }}/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"

@@ -15,11 +15,9 @@
         state: started
       loop: "{{ groups['molecule'] }}"
 
-    # noqa below: the systemd modules manage single units; none waits for the whole system to finish booting
     - name: Wait for systemd inside the containers
       ansible.builtin.command: systemctl is-system-running --wait  # noqa: command-instead-of-module
       register: nginx_exporter_test_systemd_state
-      # "degraded" means booted with a failed unit, which is normal for a container
       failed_when: nginx_exporter_test_systemd_state.stdout not in ['running', 'degraded']
       changed_when: false
       delegate_to: "{{ item }}"

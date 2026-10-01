@@ -1,6 +1,3 @@
-# Every port a service listens on and something else consumes. Lives in the parent group, so a consumer
-# on one host sees the port of a service on another. Define it here only: overriding a single key at a
-# higher precedence replaces the whole dict, not just that key.
 service_ports:
   application: 8080
   actuator: 9090

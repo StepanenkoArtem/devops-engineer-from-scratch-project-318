@@ -27,9 +27,6 @@ promtail_positions_path: "{{ promtail_positions_dir }}/positions.yml"
 promtail_listen_address: "{{ private_address }}"
 promtail_listen_port: "{{ service_ports.promtail }}"
 
-# promtail_loki_push_url has no default on purpose: where Loki lives is the inventory's business
-# (group_vars/application/promtail.yml), not the role's
-
 promtail_environment: "prod"
 
 # Docker container whose logs are shipped as job=application

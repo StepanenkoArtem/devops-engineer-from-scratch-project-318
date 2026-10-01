@@ -6,12 +6,10 @@ grafana_csrf_trusted_origin: "https://{{ domain }}"
 grafana_admin_user: "admin"
 grafana_admin_password: "{{ vault_grafana_admin_password }}"
 
-# Host side comes from the service_ports registry; container side is passed to Grafana via env
 grafana_host_port: "{{ service_ports.grafana }}"
 grafana_container_port: 3000
 grafana_docker_network: "{{ monitoring_network }}"
 
-# Prometheus and Loki are reached by container name over the shared docker network
 grafana_prometheus_url: "http://{{ service_containers.prometheus }}:{{ service_ports.prometheus }}"
 grafana_loki_url: "http://{{ service_containers.loki }}:{{ service_ports.loki }}"
 

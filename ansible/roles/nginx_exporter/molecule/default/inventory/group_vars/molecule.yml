@@ -1,5 +1,3 @@
-# Where the test nginx exposes stub_status. Both prepare.yml (sets it up) and converge.yml (points the
-# exporter at it) read these, so they live here once
 nginx_exporter_test_stub_status_port: 8081
 nginx_exporter_test_stub_status_path: /status
 

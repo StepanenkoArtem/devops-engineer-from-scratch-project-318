@@ -1,6 +1,3 @@
-# Chunks and index live in a dedicated Space: its key cannot reach the application's user files.
-# It identifies this environment, so the loki role has no default for it: another environment that
-# forgets to set it fails instead of shipping its logs here
 loki_s3_bucket: "hexlet4-logs"
 loki_s3_region: "fra1"
 loki_s3_endpoint: "fra1.digitaloceanspaces.com"

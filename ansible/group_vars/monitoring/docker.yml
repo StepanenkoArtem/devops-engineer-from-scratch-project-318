@@ -2,13 +2,9 @@ docker_packages_state: present
 docker_users:
   - "{{ non_root_user_name }}"
 
-# The shared network of the monitoring containers. The subnet is pinned instead of left to Docker's
-# pool, so the firewall rules for container-to-host traffic can name it exactly
 monitoring_network: monitoring
 monitoring_subnet: "172.18.0.0/16"
 
-# Container names double as DNS names inside monitoring_network, so they are an interface between
-# roles, just like service_ports. Only names that another role consumes live here
 service_containers:
   prometheus: prometheus
   loki: loki

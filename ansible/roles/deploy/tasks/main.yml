@@ -24,7 +24,6 @@
       - "{{ deploy_tmp_path }}:/app/tmp"
     env:
       SPRING_PROFILES_ACTIVE: "prod"
-      # docker_container rejects non-string env values, and "{{ port }}" renders as a number
       SERVER_PORT: "{{ deploy_http_container_port | string }}"
       MANAGEMENT_SERVER_PORT: "{{ deploy_actuator_container_port | string }}"
 

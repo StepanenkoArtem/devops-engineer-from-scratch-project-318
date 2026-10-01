@@ -97,7 +97,6 @@
     ports:
       - "127.0.0.1:{{ grafana_host_port }}:{{ grafana_container_port }}"
     env:
-      # docker_container rejects non-string env values, and "{{ port }}" renders as a number
       GF_SERVER_HTTP_PORT: "{{ grafana_container_port | string }}"
       GF_SECURITY_ADMIN_USER: "{{ grafana_admin_user }}"
       GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
