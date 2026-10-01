@@ -13,7 +13,6 @@
         ipam_config:
           - subnet: "{{ monitoring_subnet }}"
 
-    # TODO: consider to extract UFW to role
     - name: Configure public ports
       community.general.ufw:
         rule: allow
