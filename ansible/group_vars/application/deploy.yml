@@ -1,5 +1,5 @@
-# The Space holding the application's user files. It identifies this environment, so the deploy role
-# has no default for it: another environment that forgets to set it fails instead of writing here
+image_tag: "sha-07fb538"
+
 deploy_s3_bucket: "hexlet4-s3"
 deploy_s3_region: "fra1"
 deploy_s3_endpoint: "https://fra1.digitaloceanspaces.com"

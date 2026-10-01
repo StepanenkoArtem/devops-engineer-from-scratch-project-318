@@ -7,13 +7,17 @@ droplet: ## Bootstrap brand new single droplet
 	@test -n "$(HOST)" || { echo "usage: make droplet HOST=<host>"; exit 1; }
 	ansible-playbook ansible/droplets.yml -i ansible/inventory.ini "--limit=$(HOST)"
 
-application: ## Deploy application with given SHA
-	@test -n "$(IMAGE_TAG)" || { echo "usage: make application IMAGE_TAG=sha-<commit>"; exit 1; }
-	ansible-playbook ansible/application.yml -i ansible/inventory.ini -e "image_tag=$(IMAGE_TAG)" --limit=application
+IMAGE_TAG_ARG =$(if $(IMAGE_TAG),-e "image_tag=$(IMAGE_TAG)")
 
-application-check: ## Dry-run application deploy with given SHA (--check --diff)
-	@test -n "$(IMAGE_TAG)" || { echo "usage: make application-check IMAGE_TAG=sha-<commit>"; exit 1; }
-	ansible-playbook ansible/application.yml -i ansible/inventory.ini -e "image_tag=$(IMAGE_TAG)" --limit=application --check --diff
+deploy: ## Deploy everything: application first, monitoring only if that succeeded
+	$(MAKE) application
+	$(MAKE) monitoring
+
+application: ## Deploy application (pinned version, or IMAGE_TAG=sha-<commit>)
+	ansible-playbook ansible/application.yml -i ansible/inventory.ini $(IMAGE_TAG_ARG) --limit=application
+
+application-check: ## Dry-run application deploy (--check --diff)
+	ansible-playbook ansible/application.yml -i ansible/inventory.ini $(IMAGE_TAG_ARG) --limit=application --check --diff
 
 monitoring: ## Deploy monitoring server
 	ansible-playbook ansible/monitoring.yml -i ansible/inventory.ini
@@ -34,4 +38,4 @@ smoke: ## Check the live system: public endpoints, Prometheus, Loki and every sc
 	ansible-playbook ansible/smoke.yml -i ansible/inventory.ini
 
 
-.PHONY: help droplet application application-check monitoring monitoring-check requirements lint test smoke
+.PHONY: help droplet deploy application application-check monitoring monitoring-check requirements lint test smoke
