@@ -16,9 +16,12 @@
       loop: "{{ groups['molecule'] }}"
 
     - name: Wait for systemd inside the containers
-      ansible.builtin.command: systemctl is-system-running --wait  # noqa: command-instead-of-module
+      ansible.builtin.raw: systemctl is-system-running --wait
       register: nginx_exporter_test_systemd_state
-      failed_when: nginx_exporter_test_systemd_state.stdout not in ['running', 'degraded']
+      failed_when: (nginx_exporter_test_systemd_state.stdout | default('') | trim) not in ['running', 'degraded']
+      until: nginx_exporter_test_systemd_state is not failed
+      retries: 10
+      delay: 3
       changed_when: false
       delegate_to: "{{ item }}"
       loop: "{{ groups['molecule'] }}"
