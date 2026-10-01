@@ -23,19 +23,16 @@
       register: smoke_public
       failed_when: false
 
-    - name: Every public endpoint answers 200
-      ansible.builtin.assert:
-        that: smoke_public_failed | length == 0
-        fail_msg: "Not 200: {{ smoke_public_failed | join(', ') }}"
-        success_msg: "All {{ smoke_public.results | length }} public checks answered 200"
-      vars:
-        smoke_public_failed: >-
+    - name: Record public failures
+      ansible.builtin.set_fact:
+        smoke_public_failures: >-
           {{ smoke_public.results | rejectattr('status', 'equalto', 200)
-             | map(attribute='item.name') | list }}
+             | map(attribute='item.name') | map('regex_replace', '^', 'not 200: ') | list }}
 
 - name: Smoke from inside the monitoring host
   hosts: monitoring
   gather_facts: false
+  ignore_unreachable: true
 
   vars:
     smoke_expected_targets:
@@ -80,14 +77,30 @@
       delay: 15
       failed_when: false
 
-    - name: Prometheus, Loki and every expected target are healthy
-      ansible.builtin.assert:
-        that: smoke_inside_failures | length == 0
-        fail_msg: "{{ smoke_inside_failures | join('; ') }}"
-        success_msg: "Prometheus healthy, Loki ready, all {{ smoke_expected_targets | length }} targets up"
-      vars:
+    - name: Record inside failures
+      ansible.builtin.set_fact:
         smoke_inside_failures: >-
-          {{ ([] if smoke_prometheus_healthy.status == 200 else ['Prometheus /-/healthy: ' ~ smoke_prometheus_healthy.status])
-             + ([] if smoke_loki_ready.status == 200
-                else ['Loki /ready: ' ~ smoke_loki_ready.status ~ ' ' ~ (smoke_loki_ready.content | default('') | trim)])
-             + ([] if smoke_targets_missing | length == 0 else ['down or missing: ' ~ smoke_targets_missing | join(', ')]) }}
+          {{ ([] if (smoke_prometheus_healthy.status | default(-1)) == 200
+                else ['Prometheus /-/healthy: ' ~ (smoke_prometheus_healthy.status | default('unreachable'))])
+             + ([] if (smoke_loki_ready.status | default(-1)) == 200
+                else ['Loki /ready: ' ~ (smoke_loki_ready.status | default('unreachable')) ~ ' '
+                      ~ (smoke_loki_ready.content | default('') | trim)])
+             + ([] if smoke_targets_missing | length == 0
+                else ['down or missing: ' ~ smoke_targets_missing | join(', ')]) }}
+
+- name: Smoke verdict
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    smoke_failures: >-
+      {{ (smoke_public_failures | default(['public checks did not run']))
+         + (hostvars['grafana'].smoke_inside_failures | default(['monitoring checks did not run'])) }}
+
+  tasks:
+    - name: Every check passed
+      ansible.builtin.assert:
+        that: smoke_failures | length == 0
+        fail_msg: "{{ smoke_failures | join('; ') }}"
+        success_msg: "Public endpoints, Prometheus, Loki and every scrape target are healthy"
