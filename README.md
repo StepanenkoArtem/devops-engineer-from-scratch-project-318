@@ -1,6 +1,7 @@
 ### Hexlet tests and linter status:
 
 [![Actions Status](https://github.com/StepanenkoArtem/devops-engineer-from-scratch-project-318/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/StepanenkoArtem/devops-engineer-from-scratch-project-318/actions)
+[![checks](https://github.com/StepanenkoArtem/devops-engineer-from-scratch-project-318/actions/workflows/checks.yml/badge.svg)](https://github.com/StepanenkoArtem/devops-engineer-from-scratch-project-318/actions/workflows/checks.yml)
 
 # Bulletins — infrastructure and observability
 
@@ -110,6 +111,9 @@ PostgreSQL database, two S3-compatible buckets (application files, Loki chunks),
 | `make lint`  | `ansible-lint` at the `production` profile                                                 | nothing      |
 | `make test`  | Molecule: applies the `nginx_exporter` role to a throwaway container, twice, then verifies | Docker       |
 | `make smoke` | the live system, from outside and from inside                                              | both servers |
+
+`make lint` and `make test` also run in GitHub Actions on every pull request and on every push to `master`
+(`.github/workflows/checks.yml`).
 
 `make smoke` requests the application page, its REST API (`/api/bulletins`, which needs the database) and Grafana's
 health endpoint from your machine. Then, on the monitoring host, it checks Prometheus, Loki and that every expected
