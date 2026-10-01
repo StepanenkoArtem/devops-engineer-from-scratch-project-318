@@ -153,6 +153,8 @@ Promtail on the application host ships nginx access and error logs and the appli
 stores them in a dedicated bucket for 15 days. Streams are labelled `job` (`nginx-access`, `nginx-error`,
 `application`), `node` and `environment`.
 
+![Loki in Explore](assets/loki-explore.png)
+
 Promtail is a deliberate choice: the course step names it. It reached end of life on 2026-03-02 and its successor is
 Grafana Alloy, so the agent is pinned to `3.6.11`, the last release that ships Promtail binaries. Outside this course
 the choice would be Alloy.
