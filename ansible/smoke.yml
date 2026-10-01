@@ -7,7 +7,6 @@
   gather_facts: false
 
   vars:
-    # Hosts are named explicitly; their domains come from the inventory
     smoke_public_checks:
       - name: application page
         url: "https://{{ hostvars['bulletins'].domain }}/"
@@ -42,9 +41,6 @@
   gather_facts: false
 
   vars:
-    # The fleet as it must be: job@node for every target Prometheus has to scrape. Deliberately
-    # written out, not derived from the inventory, so a host that vanishes from the inventory fails
-    # here instead of shrinking the expectation along with the config
     smoke_expected_targets:
       - node@bulletins
       - node@grafana
@@ -73,6 +69,7 @@
       ansible.builtin.uri:
         url: "http://{{ private_address }}:{{ service_ports.loki }}/ready"
         timeout: 10
+        return_content: true
       register: smoke_loki_ready
       failed_when: false
 
@@ -95,5 +92,6 @@
       vars:
         smoke_inside_failures: >-
           {{ ([] if smoke_prometheus_healthy.status == 200 else ['Prometheus /-/healthy: ' ~ smoke_prometheus_healthy.status])
-             + ([] if smoke_loki_ready.status == 200 else ['Loki /ready: ' ~ smoke_loki_ready.status])
+             + ([] if smoke_loki_ready.status == 200
+                else ['Loki /ready: ' ~ smoke_loki_ready.status ~ ' ' ~ (smoke_loki_ready.content | default('') | trim)])
              + ([] if smoke_targets_missing | length == 0 else ['down or missing: ' ~ smoke_targets_missing | join(', ')]) }}
