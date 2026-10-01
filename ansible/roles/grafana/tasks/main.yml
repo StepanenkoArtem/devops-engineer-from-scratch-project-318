@@ -86,3 +86,38 @@
 
     restart_policy: unless-stopped
   no_log: "{{ no_log | default(true) }}"
+
+- name: Wait for Grafana API
+  ansible.builtin.uri:
+    url: "{{ grafana_api_url }}/api/health"
+  register: grafana_health
+  until: grafana_health.status | default(0) == 200
+  retries: 12
+  delay: 5
+
+- name: Look up viewer account
+  ansible.builtin.uri:
+    url: "{{ grafana_api_url }}/api/users/lookup?loginOrEmail={{ grafana_viewer_login }}"
+    url_username: "{{ grafana_admin_user }}"
+    url_password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200, 404]
+  register: grafana_viewer_lookup
+  no_log: "{{ no_log | default(true) }}"
+
+- name: Create viewer account
+  ansible.builtin.uri:
+    url: "{{ grafana_api_url }}/api/admin/users"
+    method: POST
+    url_username: "{{ grafana_admin_user }}"
+    url_password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ grafana_viewer_login }}"
+      login: "{{ grafana_viewer_login }}"
+      password: "{{ grafana_viewer_password }}"
+      OrgId: 1
+  when: grafana_viewer_lookup.status | default(0) == 404
+  changed_when: true
+  no_log: "{{ no_log | default(true) }}"
