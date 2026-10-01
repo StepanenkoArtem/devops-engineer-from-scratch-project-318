@@ -136,6 +136,8 @@ Provisioned from `ansible/roles/grafana/files/dashboards/`, read-only in the UI.
 
 ![Bulletins App dashboard](assets/bulletins-app-dashboard.png)
 
+![Bulletins App dashboard, Nginx and Logs rows](assets/bulletins-nginx-dashboard.png)
+
 ### Logs
 
 Promtail on the application host ships nginx access and error logs and the application container's output to Loki, which
@@ -160,6 +162,8 @@ Rules are evaluated by Grafana and delivered to Telegram. Everything is provisio
 | `Disk usage by size`  | used disk above 80%                        | 5m  | High     |
 | `5xx Errors Rate`     | 5xx share of application requests above 3% | 1m  | High     |
 | `5xx Errors Count`    | more than 5 nginx 5xx responses in 5 min   | 1m  | High     |
+
+![Alert rules](assets/alert-rules.png)
 
 To trigger a test alert without touching the application, stop one exporter and wait about three minutes:
 
