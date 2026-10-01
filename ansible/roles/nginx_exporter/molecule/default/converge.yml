@@ -1,0 +1,7 @@
+- name: Converge
+  hosts: molecule
+  gather_facts: true
+  tasks:
+    - name: Apply nginx_exporter role
+      ansible.builtin.include_role:
+        name: artem_stepanenko.nginx_exporter

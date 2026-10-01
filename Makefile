@@ -27,8 +27,11 @@ requirements: ## Install python dependencies and Ansible collections/roles
 lint: ## Run ansible-lint (static checks, no hosts contacted)
 	ansible-lint
 
+test: ## Run the nginx_exporter role in a throwaway container with Molecule (needs Docker)
+	cd ansible/roles/nginx_exporter && molecule test
+
 smoke: ## Check the live system: public endpoints, Prometheus, Loki and every scrape target
 	ansible-playbook ansible/smoke.yml -i ansible/inventory.ini
 
 
-.PHONY: help droplet application application-check monitoring monitoring-check requirements lint smoke
+.PHONY: help droplet application application-check monitoring monitoring-check requirements lint test smoke

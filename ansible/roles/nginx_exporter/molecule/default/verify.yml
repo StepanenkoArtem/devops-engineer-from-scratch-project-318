@@ -1,0 +1,14 @@
+- name: Verify
+  hosts: molecule
+  gather_facts: false
+  tasks:
+    - name: Read nginx_up metrics
+      ansible.builtin.uri:
+        url: "http://{{ nginx_exporter_listen_address }}/metrics"
+        return_content: true
+      register: nginx_exporter_response
+
+    - name: Check nginx_up metrics
+      ansible.builtin.assert:
+        that:
+          - "'nginx_up 1' in nginx_exporter_response.content"

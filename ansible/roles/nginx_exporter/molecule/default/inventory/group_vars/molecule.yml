@@ -1,0 +1,7 @@
+# Where the test nginx exposes stub_status. Both prepare.yml (sets it up) and converge.yml (points the
+# exporter at it) read these, so they live here once
+nginx_exporter_test_stub_status_port: 8081
+nginx_exporter_test_stub_status_path: /status
+
+nginx_exporter_listen_address: "127.0.0.1:9113"
+nginx_exporter_scrape_uri: "http://127.0.0.1:{{ nginx_exporter_test_stub_status_port }}{{ nginx_exporter_test_stub_status_path }}"

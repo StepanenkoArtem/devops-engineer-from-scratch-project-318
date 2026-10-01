@@ -1,4 +1,6 @@
 galaxy_info:
+  role_name: nginx_exporter
+  namespace: artem_stepanenko
   author: Artem Stepanenko
   description: Build nginx exporter
   license: MIT
