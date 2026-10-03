@@ -40,6 +40,15 @@
   notify: Restart grafana
   no_log: "{{ no_log | default(true) }}"
 
+- name: Copy alert rules provisioning
+  ansible.builtin.template:
+    src: alerting/rules.yaml.j2
+    dest: "{{ grafana_alerting_path }}/rules.yaml"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  notify: Restart grafana
+
 - name: Copy provisioned dashboards
   ansible.builtin.copy:
     src: dashboards/
