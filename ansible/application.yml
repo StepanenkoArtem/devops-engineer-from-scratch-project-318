@@ -29,12 +29,6 @@
         state: enabled
         default: deny
 
-    - name: Create ssl_certificate directory
-      ansible.builtin.file:
-        path: /var/www/letsencrypt
-        state: directory
-        mode: "0755"
-
   roles:
     - prepare_nginx
     - prometheus.prometheus.node_exporter
@@ -45,33 +39,9 @@
     - name: Run handlers after roles to reload nginx
       ansible.builtin.meta: flush_handlers
 
-    - name: Initial Certbot Run
+    - name: Set up TLS certificates
       ansible.builtin.include_role:
-        name: geerlingguy.certbot
-
-    - name: Re-check nginx configuration
-      ansible.builtin.include_role:
-        name: prepare_nginx
-
-    - name: Re-Run nginx with TLS
-      ansible.builtin.include_role:
-        name: geerlingguy.nginx
-
-    - name: Run handlers after TLS certificate issuance
-      ansible.builtin.meta: flush_handlers
-
-    - name: Set renew cert hook
-      ansible.builtin.copy:
-        src: certbot/deploy_auto_renew.sh
-        dest: /etc/letsencrypt/renewal-hooks/deploy/
-        owner: "root"
-        mode: "0755"
-
-    - name: Turn off certbot.timer
-      ansible.builtin.systemd_service:
-        name: certbot.timer
-        enabled: false
-        state: stopped
+        name: certbot_setup
 
     - name: Run docker
       ansible.builtin.include_role:

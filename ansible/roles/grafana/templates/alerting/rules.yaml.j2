@@ -22,7 +22,7 @@ groups:
               expr: up
               instant: true
               intervalMs: 1000
-              legendFormat: "{{instance}}"
+              legendFormat: "{% raw %}{{instance}}{% endraw %}"
               maxDataPoints: 43200
               range: false
               refId: A
@@ -57,7 +57,7 @@ groups:
         for: 1m
         keepFiringFor: 1m
         annotations:
-          summary: "{{ $labels.node }} is down (job {{ $labels.job }})"
+          summary: "{% raw %}{{ $labels.node }} is down (job {{ $labels.job }}){% endraw %}"
         labels:
           Severity: Critical
           service: platform
@@ -120,7 +120,7 @@ groups:
         noDataState: OK
         execErrState: Error
         annotations:
-          summary: "No metrics for job {{ $labels.job }} — Prometheus is not scraping any target"
+          summary: "{% raw %}No metrics for job {{ $labels.job }} — Prometheus is not scraping any target{% endraw %}"
         for: 1m
         labels:
           Severity: Critical
@@ -148,7 +148,7 @@ groups:
               instant: false
               interval: ""
               intervalMs: 15000
-              legendFormat: "{{node}}"
+              legendFormat: "{% raw %}{{node}}{% endraw %}"
               maxDataPoints: 43200
               range: true
               refId: A
@@ -184,7 +184,7 @@ groups:
               conditions:
                 - evaluator:
                     params:
-                      - 0.8
+                      - {{ grafana_alert_thresholds.cpu }}
                     type: gt
                   operator:
                     type: and
@@ -211,7 +211,7 @@ groups:
         annotations:
           __dashboardUid__: system-usage
           __panelId__: "5"
-          summary: "CPU usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}"
+          summary: "{% raw %}CPU usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}{% endraw %}"
         labels:
           Severity: High
           service: infrastructure
@@ -237,7 +237,7 @@ groups:
               instant: false
               interval: ""
               intervalMs: 15000
-              legendFormat: "{{node}}"
+              legendFormat: "{% raw %}{{node}}{% endraw %}"
               maxDataPoints: 43200
               range: true
               refId: A
@@ -273,7 +273,7 @@ groups:
               conditions:
                 - evaluator:
                     params:
-                      - 0.8
+                      - {{ grafana_alert_thresholds.disk }}
                     type: gt
                   operator:
                     type: and
@@ -300,7 +300,7 @@ groups:
         annotations:
           __dashboardUid__: system-usage
           __panelId__: "3"
-          summary: "Disk usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}"
+          summary: "{% raw %}Disk usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}{% endraw %}"
         labels:
           Severity: High
           service: infrastructure
@@ -326,7 +326,7 @@ groups:
               instant: false
               interval: ""
               intervalMs: 15000
-              legendFormat: "{{node}}"
+              legendFormat: "{% raw %}{{node}}{% endraw %}"
               maxDataPoints: 43200
               range: true
               refId: A
@@ -362,7 +362,7 @@ groups:
               conditions:
                 - evaluator:
                     params:
-                      - 0.85
+                      - {{ grafana_alert_thresholds.memory }}
                     type: gt
                   operator:
                     type: and
@@ -390,7 +390,7 @@ groups:
         annotations:
           __dashboardUid__: system-usage
           __panelId__: "2"
-          summary: "Memory usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}"
+          summary: "{% raw %}Memory usage on {{ $labels.node }}: {{ humanizePercentage $values.B.Value }}{% endraw %}"
         labels:
           Severity: High
           service: infrastructure
@@ -466,7 +466,7 @@ groups:
               conditions:
                 - evaluator:
                     params:
-                      - 0.03
+                      - {{ grafana_alert_thresholds.http_5xx_rate }}
                     type: gt
                   operator:
                     type: and
@@ -494,7 +494,7 @@ groups:
         annotations:
           __dashboardUid__: bulletins-app
           __panelId__: "6"
-          summary: "Too many 5xx errors at {{ $labels.job }}: {{ humanizePercentage $values.B.Value }}"
+          summary: "{% raw %}Too many 5xx errors at {{ $labels.job }}: {{ humanizePercentage $values.B.Value }}{% endraw %}"
         labels:
           Severity: High
           service: bulletins
@@ -545,7 +545,7 @@ groups:
               conditions:
                 - evaluator:
                     params:
-                      - 5
+                      - {{ grafana_alert_thresholds.http_5xx_count }}
                     type: gt
                   operator:
                     type: and
@@ -574,7 +574,7 @@ groups:
         annotations:
           __dashboardUid__: bulletins-app
           __panelId__: "16"
-          summary: "nginx returned {{ $values.B.Value }} 5xx responses in the last 5m on {{ $labels.node }}"
+          summary: "{% raw %}nginx returned {{ $values.B.Value }} 5xx responses in the last 5m on {{ $labels.node }}{% endraw %}"
         labels:
           Severity: High
           service: bulletins

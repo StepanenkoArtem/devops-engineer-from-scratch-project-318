@@ -164,8 +164,14 @@ the choice would be Alloy.
 
 ### Alerting
 
-Rules are evaluated by Grafana and delivered to Telegram. Everything is provisioned from
+Rules are evaluated by Grafana and delivered to Telegram. The rules are rendered from
+`ansible/roles/grafana/templates/alerting/rules.yaml.j2`, notification policies and message templates are copied from
 `ansible/roles/grafana/files/alerting/`.
+
+Thresholds live in `ansible/group_vars/monitoring/alerting.yml`. Change them there and run `make monitoring`; the table
+below shows the current values. A rule edited in the UI and exported over the template loses its threshold placeholders
+and the `{% raw %}` markers around Grafana's own `{{ }}` expressions. Restore both by hand: without the markers the
+deploy fails at render time, without the placeholders the thresholds silently stop following `alerting.yml`.
 
 | Rule                  | Fires when                                 | For | Severity |
 | --------------------- | ------------------------------------------ | --- | -------- |
